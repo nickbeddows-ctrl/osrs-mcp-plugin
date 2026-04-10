@@ -17,14 +17,14 @@ import java.util.regex.Pattern;
 @Singleton
 public class RelayService
 {
-    private static final String[] RELAY_COMMANDS = {
+    private static final String[] RELAY_HOSTS = {
         "serveo.net",
         "nokey@localhost.run"
     };
 
     // Broad pattern: matches any https:// URL in relay output.
-    // Serveo previously used *.serveo.net but now uses *.serveousercontent.com.
-    // localhost.run uses *.lhr.life. Using a general pattern future-proofs both.
+    // Serveo now uses *.serveousercontent.com; localhost.run uses *.lhr.life.
+    // Using a general pattern future-proofs both.
     private static final Pattern URL_PATTERN =
         Pattern.compile("https://[a-zA-Z0-9][a-zA-Z0-9.\\-]+");
 
@@ -49,14 +49,14 @@ public class RelayService
 
     private void tryRelay(int port)
     {
-        if (!running || relayIndex >= RELAY_COMMANDS.length)
+        if (!running || relayIndex >= RELAY_HOSTS.length)
         {
             if (onError != null)
                 onError.accept("All relay services failed. Check your internet connection.");
             return;
         }
 
-        String host = RELAY_COMMANDS[relayIndex];
+        String host = RELAY_HOSTS[relayIndex];
         log.info("OSRS MCP: Trying relay via {}", host);
 
         executor = Executors.newSingleThreadExecutor(r ->
@@ -73,12 +73,24 @@ public class RelayService
     {
         try
         {
+            // Build the -R argument.
+            // With subdomain: "myname:80:localhost:8282" → https://myname.serveo.net
+            // Without:        "80:localhost:8282"        → random URL
+            String subdomain = config.relaySubdomain().trim();
+            boolean hasSubdomain = !subdomain.isEmpty() && host.equals("serveo.net");
+            String forwardArg = hasSubdomain
+                ? subdomain + ":80:localhost:" + port
+                : "80:localhost:" + port;
+
+            if (hasSubdomain)
+                log.info("OSRS MCP: Requesting stable subdomain: {}", subdomain);
+
             ProcessBuilder pb = new ProcessBuilder(
                 "ssh",
                 "-o", "StrictHostKeyChecking=no",
                 "-o", "ServerAliveInterval=30",
                 "-o", "ExitOnForwardFailure=yes",
-                "-R", "80:localhost:" + port,
+                "-R", forwardArg,
                 host
             );
             pb.redirectErrorStream(true);
@@ -90,8 +102,18 @@ public class RelayService
             while ((line = reader.readLine()) != null)
             {
                 log.debug("OSRS MCP relay: {}", line);
-                // Strip ANSI escape codes before matching
                 String clean = line.replaceAll("\\x1B\\[[0-9;]*m", "");
+
+                // If subdomain was requested but taken, serveo prints an error
+                if (hasSubdomain && clean.toLowerCase().contains("already in use"))
+                {
+                    log.warn("OSRS MCP: Subdomain '{}' is already taken, falling back to random URL", subdomain);
+                    if (onError != null)
+                        onError.accept("Subdomain '" + subdomain + "' is taken. Clear it in settings to use a random URL.");
+                    process.destroy();
+                    return;
+                }
+
                 Matcher m = URL_PATTERN.matcher(clean);
                 if (m.find())
                 {

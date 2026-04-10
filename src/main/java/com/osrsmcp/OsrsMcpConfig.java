@@ -19,13 +19,22 @@ public interface OsrsMcpConfig extends Config
     @ConfigItem(keyName = "connectionMode", name = "Connection mode",
         description = "<html><b>Local</b> — same machine only (default)<br>" +
                       "<b>LAN</b> — devices on the same network/subnet<br>" +
-                      "<b>Cloud relay</b> — any device on any network, uses a free SSH tunnel (no extra software needed, SSH is built into macOS and Windows 10+)</html>",
+                      "<b>Cloud relay</b> — any device on any network, uses a free SSH tunnel " +
+                      "(no extra software needed, SSH is built into macOS and Windows 10+)</html>",
         section = connectionSection, position = 1)
     default ConnectionMode connectionMode() { return ConnectionMode.LOCAL; }
 
+    @ConfigItem(keyName = "relaySubdomain", name = "Relay subdomain",
+        description = "<html>Optional. Pick a unique name (e.g. <b>yourname-osrs-mcp</b>) to get a " +
+                      "stable URL that never changes: <b>https://yourname-osrs-mcp.serveo.net</b><br>" +
+                      "Leave blank for a random URL (changes on every restart).<br>" +
+                      "Only letters, numbers and hyphens. Must be unique on serveo.net.</html>",
+        section = connectionSection, position = 2)
+    default String relaySubdomain() { return ""; }
+
     @ConfigItem(keyName = "authToken", name = "Auth Token",
         description = "Optional Bearer token. Recommended when using LAN or Cloud Relay mode.",
-        section = connectionSection, position = 2, secret = true)
+        section = connectionSection, position = 3, secret = true)
     default String authToken() { return ""; }
 
     @ConfigSection(name = "Privacy", description = "Control what data the AI can access", position = 1)

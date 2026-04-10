@@ -109,9 +109,32 @@ The panel also has a **Copy** button so you don't have to type the URL manually.
 
 **How it works:** The plugin runs `ssh -R 80:localhost:8282 serveo.net` as a background process. Serveo is a free public SSH relay service. If Serveo is unavailable, it automatically falls back to `localhost.run`, which works identically. Both are free and require no account.
 
-> **Note:** The relay URL changes every time the plugin restarts. Update your config when it does.
+> **Note:** By default the relay URL is random and changes every time the plugin restarts. See below for how to get a stable URL.
 
 > **Tip:** Set an Auth Token in the plugin settings for extra security when using cloud relay.
+
+#### Getting a stable URL (recommended)
+
+By default, serveo assigns a random URL each time the tunnel starts, which means you have to update your config every time RuneLite restarts. You can fix this by setting a **Relay subdomain** in the plugin settings.
+
+1. In the plugin settings, set **Relay subdomain** to something unique — e.g. `yourname-osrs-mcp`
+2. Your URL will always be `https://yourname-osrs-mcp.serveo.net/mcp` — it never changes
+3. Set your config once and never touch it again:
+
+```json
+{
+  "mcpServers": {
+    "osrs": {
+      "command": "npx",
+      "args": ["mcp-remote", "https://yourname-osrs-mcp.serveo.net/mcp"]
+    }
+  }
+}
+```
+
+> **Note:** The subdomain must be unique on serveo.net. If someone else has already claimed it, the plugin will show an error and prompt you to choose a different name. Use something specific to you — your username plus a suffix works well.
+
+> **Note:** The subdomain only works with serveo.net, not the localhost.run fallback. If serveo is unavailable, the plugin falls back to a random localhost.run URL automatically.
 
 ---
 
@@ -146,6 +169,7 @@ The plugin works with any MCP-compatible tool, not just Claude Desktop.
 |---------|---------|-------------|
 | Port | 8282 | Port the MCP server listens on |
 | Connection mode | Local | Local, LAN, or Cloud relay (mutually exclusive) |
+| Relay subdomain | (empty) | Optional unique name for a stable cloud relay URL (e.g. `yourname-osrs-mcp`) |
 | Auth Token | (empty) | Optional Bearer token |
 | Share skill levels | On | Allow the AI to read your skills |
 | Share equipment | On | Allow the AI to see equipped gear |
