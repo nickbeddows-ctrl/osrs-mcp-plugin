@@ -233,17 +233,25 @@ public class OsrsMcpPanel extends PluginPanel
         relaySection.add(relayUrlRow);
 
         // Registration required row
-        regLabel.setFont(new Font(Font.MONOSPACED, Font.PLAIN, 9));
+        regLabel.setFont(FontManager.getRunescapeSmallFont());
         regLabel.setForeground(ColorScheme.BRAND_ORANGE);
-        JButton openRegBtn = new JButton("Register");
-        styleButton(openRegBtn);
-        openRegBtn.addActionListener(e -> {
-            try { java.awt.Desktop.getDesktop().browse(new java.net.URI(regLabel.getToolTipText())); }
-            catch (Exception ex) { log.warn("Could not open browser", ex); }
+        JButton copyRegBtn = new JButton("Copy URL");
+        styleButton(copyRegBtn);
+        copyRegBtn.addActionListener(e -> {
+            String regUrl = regLabel.getToolTipText();
+            if (regUrl != null && !regUrl.isEmpty())
+            {
+                Toolkit.getDefaultToolkit().getSystemClipboard()
+                    .setContents(new StringSelection(regUrl), null);
+                copyRegBtn.setText("Copied!");
+                Timer t = new Timer(1500, ev -> copyRegBtn.setText("Copy URL"));
+                t.setRepeats(false);
+                t.start();
+            }
         });
         regRow.setBackground(SECTION_BG);
         regRow.add(regLabel, BorderLayout.CENTER);
-        regRow.add(openRegBtn, BorderLayout.EAST);
+        regRow.add(copyRegBtn, BorderLayout.EAST);
         regRow.setAlignmentX(LEFT_ALIGNMENT);
         regRow.setMaximumSize(new Dimension(Integer.MAX_VALUE, 22));
         regRow.setVisible(false);
@@ -253,6 +261,28 @@ public class OsrsMcpPanel extends PluginPanel
         relaySection.add(Box.createVerticalStrut(6));
         relaySection.add(smallLabel("Set mode to \"Cloud relay\" in settings"));
         relaySection.add(smallLabel("to connect across different networks."));
+        relaySection.add(Box.createVerticalStrut(6));
+
+        // Permanent register button — always visible so users can register at any time
+        JPanel regBtnRow = new JPanel(new BorderLayout(4, 0));
+        regBtnRow.setBackground(SECTION_BG);
+        regBtnRow.setAlignmentX(LEFT_ALIGNMENT);
+        regBtnRow.setMaximumSize(new Dimension(Integer.MAX_VALUE, 22));
+        JLabel regInfo = smallLabel("For stable subdomain URL:");
+        JButton regBtn = new JButton("Register on serveo");
+        styleButton(regBtn);
+        regBtn.addActionListener(e -> {
+            Toolkit.getDefaultToolkit().getSystemClipboard()
+                .setContents(new StringSelection("https://console.serveo.net"), null);
+            regBtn.setText("URL copied!");
+            Timer t = new Timer(2000, ev -> regBtn.setText("Register on serveo"));
+            t.setRepeats(false);
+            t.start();
+        });
+        regBtnRow.add(regInfo, BorderLayout.CENTER);
+        regBtnRow.add(regBtn, BorderLayout.EAST);
+        relaySection.add(regBtnRow);
+
         return relaySection;
     }
 
@@ -485,8 +515,8 @@ public class OsrsMcpPanel extends PluginPanel
                     break;
                 case NEEDS_REGISTRATION:
                     relayDot.setForeground(ColorScheme.BRAND_ORANGE);
-                    relayText.setText("Register to use subdomain");
-                    regLabel.setText("Click Register, then restart server");
+                    relayText.setText("Registration needed");
+                    regLabel.setText("Copy URL, open in browser & sign in");
                     regLabel.setToolTipText(url);
                     regRow.setVisible(true);
                     break;

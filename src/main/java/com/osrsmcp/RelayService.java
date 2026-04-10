@@ -25,19 +25,18 @@ public class RelayService
     private static final Pattern URL_PATTERN =
         Pattern.compile("https://[a-zA-Z0-9][a-zA-Z0-9.\\-]+");
 
-    // Serveo registration URL pattern (contains /ssh/keys?add=)
     private static final Pattern REGISTER_PATTERN =
         Pattern.compile("https://console\\.serveo\\.net/ssh/keys\\?add=[A-Za-z0-9%:+/=]+");
 
     @Inject private OsrsMcpConfig config;
 
-    private Process process;
+    private Process        process;
     private ExecutorService executor;
-    private volatile String relayUrl;
+    private volatile String  relayUrl;
     private volatile boolean running;
-    private Consumer<String>   onUrlAssigned;
-    private Consumer<String>   onError;
-    private Consumer<String>   onRegistrationRequired;
+    private Consumer<String> onUrlAssigned;
+    private Consumer<String> onError;
+    private Consumer<String> onRegistrationRequired;
     private int relayIndex = 0;
 
     public void start(int port,
@@ -45,11 +44,11 @@ public class RelayService
                       Consumer<String> onError,
                       Consumer<String> onRegistrationRequired)
     {
-        this.onUrlAssigned            = onUrlAssigned;
-        this.onError                  = onError;
-        this.onRegistrationRequired   = onRegistrationRequired;
-        this.relayIndex               = 0;
-        this.running                  = true;
+        this.onUrlAssigned          = onUrlAssigned;
+        this.onError                = onError;
+        this.onRegistrationRequired = onRegistrationRequired;
+        this.relayIndex             = 0;
+        this.running                = true;
         tryRelay(port);
     }
 
@@ -78,9 +77,9 @@ public class RelayService
     {
         try
         {
-            String subdomain    = config.relaySubdomain().trim();
+            String  subdomain    = config.relaySubdomain().trim();
             boolean hasSubdomain = !subdomain.isEmpty() && host.equals("serveo.net");
-            String forwardArg   = hasSubdomain
+            String  forwardArg   = hasSubdomain
                 ? subdomain + ":80:localhost:" + port
                 : "80:localhost:" + port;
 
@@ -95,6 +94,7 @@ public class RelayService
             pb.redirectErrorStream(true);
             process = pb.start();
 
+            boolean registrationPending = false;
             BufferedReader reader = new BufferedReader(
                 new InputStreamReader(process.getInputStream()));
             String line;
@@ -103,26 +103,30 @@ public class RelayService
                 log.debug("OSRS MCP relay: {}", line);
                 String clean = line.replaceAll("\\x1B\\[[0-9;]*m", "");
 
-                // Serveo registration required for custom subdomains
+                // Check for registration requirement
                 Matcher regMatcher = REGISTER_PATTERN.matcher(clean);
-                if (regMatcher.find() && onRegistrationRequired != null)
+                if (regMatcher.find())
                 {
                     log.warn("OSRS MCP: Serveo subdomain requires SSH key registration");
-                    onRegistrationRequired.accept(regMatcher.group());
+                    registrationPending = true;
+                    if (onRegistrationRequired != null)
+                        onRegistrationRequired.accept(regMatcher.group());
                 }
 
-                // Relay URL assigned
-                Matcher urlMatcher = URL_PATTERN.matcher(clean);
-                if (urlMatcher.find())
+                // Only accept a relay URL if registration is not pending
+                if (!registrationPending)
                 {
-                    String found = urlMatcher.group();
-                    // Skip the registration console URL
-                    if (!found.contains("console.serveo.net"))
+                    Matcher urlMatcher = URL_PATTERN.matcher(clean);
+                    if (urlMatcher.find())
                     {
-                        relayUrl = found + "/mcp";
-                        log.info("OSRS MCP: Relay URL assigned: {}", relayUrl);
-                        if (onUrlAssigned != null)
-                            onUrlAssigned.accept(relayUrl);
+                        String found = urlMatcher.group();
+                        if (!found.contains("console.serveo.net"))
+                        {
+                            relayUrl = found + "/mcp";
+                            log.info("OSRS MCP: Relay URL assigned: {}", relayUrl);
+                            if (onUrlAssigned != null)
+                                onUrlAssigned.accept(relayUrl);
+                        }
                     }
                 }
             }
@@ -164,6 +168,6 @@ public class RelayService
         }
     }
 
-    public String getRelayUrl() { return relayUrl; }
-    public boolean isRunning()  { return running && relayUrl != null; }
+    public String  getRelayUrl() { return relayUrl; }
+    public boolean isRunning()   { return running && relayUrl != null; }
 }
