@@ -22,10 +22,11 @@ public class OsrsMcpPanel extends PluginPanel
     private static final Color GREEN      = new Color(0, 180, 90);
 
     // Status
-    private final JLabel statusDot      = new JLabel("⬤");
-    private final JLabel statusText     = new JLabel("Starting...");
-    private final JLabel gameStateLabel = new JLabel("Not logged in");
-    private final JLabel localUrlLabel  = new JLabel();
+    private final JLabel  statusDot      = new JLabel("⬤");
+    private final JLabel  statusText     = new JLabel("Starting...");
+    private final JLabel  gameStateLabel = new JLabel("Not logged in");
+    private final JLabel  localUrlLabel  = new JLabel();
+    private final JButton restartButton  = new JButton("Restart server");
 
     // Dynamic setup code block
     private final JTextArea setupCodeBlock = new JTextArea();
@@ -33,12 +34,15 @@ public class OsrsMcpPanel extends PluginPanel
     private String currentLanIp = null;
 
     // Relay
-    private final JLabel  relayDot    = new JLabel("⬤");
-    private final JLabel  relayText   = new JLabel("Disabled");
+    private final JLabel  relayDot     = new JLabel("⬤");
+    private final JLabel  relayText    = new JLabel("Disabled");
     private final JLabel  relayUrlLabel = new JLabel();
     private final JButton relayUrlCopy  = new JButton("Copy");
     private final JPanel  relayUrlRow   = new JPanel(new BorderLayout(4, 0));
     private final JPanel  relaySection  = new JPanel();
+
+    // Restart callback — set by the plugin after injection
+    private Runnable restartCallback;
 
     public OsrsMcpPanel()
     {
@@ -72,6 +76,11 @@ public class OsrsMcpPanel extends PluginPanel
         root.add(buildToolsSection());
 
         add(root, BorderLayout.NORTH);
+    }
+
+    public void setRestartCallback(Runnable callback)
+    {
+        this.restartCallback = callback;
     }
 
     // ── SECTION BUILDERS ─────────────────────────────────────────────────────
@@ -110,6 +119,25 @@ public class OsrsMcpPanel extends PluginPanel
         localUrlLabel.setForeground(ColorScheme.BRAND_ORANGE);
         urlRow.add(localUrlLabel);
         p.add(urlRow);
+
+        p.add(Box.createVerticalStrut(6));
+        styleButton(restartButton);
+        restartButton.setAlignmentX(LEFT_ALIGNMENT);
+        restartButton.addActionListener(e -> {
+            if (restartCallback != null)
+            {
+                restartButton.setEnabled(false);
+                restartButton.setText("Restarting...");
+                new Thread(() -> {
+                    restartCallback.run();
+                    SwingUtilities.invokeLater(() -> {
+                        restartButton.setEnabled(true);
+                        restartButton.setText("Restart server");
+                    });
+                }, "osrs-mcp-restart").start();
+            }
+        });
+        p.add(restartButton);
 
         return p;
     }
@@ -153,10 +181,8 @@ public class OsrsMcpPanel extends PluginPanel
 
         relayUrlLabel.setFont(new Font(Font.MONOSPACED, Font.PLAIN, 10));
         relayUrlLabel.setForeground(ColorScheme.BRAND_ORANGE);
-
         styleButton(relayUrlCopy);
-        relayUrlCopy.addActionListener(e ->
-        {
+        relayUrlCopy.addActionListener(e -> {
             String url = relayUrlLabel.getText();
             if (url != null && !url.isEmpty())
                 Toolkit.getDefaultToolkit().getSystemClipboard()
@@ -171,7 +197,6 @@ public class OsrsMcpPanel extends PluginPanel
         relayUrlRow.setVisible(false);
         relaySection.add(Box.createVerticalStrut(2));
         relaySection.add(relayUrlRow);
-
         relaySection.add(Box.createVerticalStrut(6));
         relaySection.add(smallLabel("Enable in settings to connect across"));
         relaySection.add(smallLabel("different networks without extra software."));
@@ -201,8 +226,7 @@ public class OsrsMcpPanel extends PluginPanel
             ? "http://" + currentLanIp + ":" + currentPort + "/mcp"
             : "http://127.0.0.1:" + currentPort + "/mcp";
 
-        boolean isLan = currentLanIp != null;
-        String argsLine = isLan
+        String argsLine = currentLanIp != null
             ? "      \"" + url + "\",\n      \"--allow-http\"]"
             : "      \"" + url + "\"]";
 
@@ -306,26 +330,22 @@ public class OsrsMcpPanel extends PluginPanel
         btn.setFont(FontManager.getRunescapeSmallFont());
         btn.setForeground(ColorScheme.LIGHT_GRAY_COLOR);
         btn.setBackground(ColorScheme.MEDIUM_GRAY_COLOR);
-        btn.setBorder(new EmptyBorder(2, 6, 2, 6));
+        btn.setBorder(new EmptyBorder(4, 8, 4, 8));
         btn.setFocusPainted(false);
         btn.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
+        btn.setMaximumSize(new Dimension(Integer.MAX_VALUE, 24));
     }
 
     // ── PUBLIC STATE METHODS ─────────────────────────────────────────────────
 
-    /**
-     * @param lanIp non-null when LAN mode is active, null for local-only mode
-     */
     public void setServerRunning(boolean running, int port, String lanIp)
     {
         SwingUtilities.invokeLater(() ->
         {
             currentPort  = port;
             currentLanIp = running ? lanIp : null;
-
             statusDot.setForeground(running ? GREEN : Color.GRAY);
             statusText.setText(running ? "MCP server running" : "MCP server stopped");
-
             if (running)
             {
                 String displayUrl = lanIp != null
@@ -337,16 +357,11 @@ public class OsrsMcpPanel extends PluginPanel
             {
                 localUrlLabel.setText("");
             }
-
             refreshSetupBlock();
         });
     }
 
-    // Keep old signature for safety
-    public void setStatus(boolean running, int port)
-    {
-        setServerRunning(running, port, null);
-    }
+    public void setStatus(boolean running, int port) { setServerRunning(running, port, null); }
 
     public void setError(String message)
     {

@@ -40,6 +40,28 @@ public class OsrsMcpPlugin extends Plugin
     @Override
     protected void startUp() throws Exception
     {
+        panel.setRestartCallback(this::restartServer);
+        startServer();
+
+        final BufferedImage icon = ImageUtil.loadImageResource(getClass(), "icon.png");
+        navButton = NavigationButton.builder()
+            .tooltip("OSRS MCP")
+            .icon(icon)
+            .priority(10)
+            .panel(panel)
+            .build();
+        clientToolbar.addNavigation(navButton);
+    }
+
+    @Override
+    protected void shutDown() throws Exception
+    {
+        stopServer();
+        clientToolbar.removeNavigation(navButton);
+    }
+
+    private void startServer()
+    {
         try
         {
             mcpServer.start(config.port());
@@ -60,25 +82,22 @@ public class OsrsMcpPlugin extends Plugin
                 err -> panel.setRelayStatus(OsrsMcpPanel.RelayStatus.ERROR, err)
             );
         }
-
-        final BufferedImage icon = ImageUtil.loadImageResource(getClass(), "icon.png");
-        navButton = NavigationButton.builder()
-            .tooltip("OSRS MCP")
-            .icon(icon)
-            .priority(10)
-            .panel(panel)
-            .build();
-        clientToolbar.addNavigation(navButton);
     }
 
-    @Override
-    protected void shutDown() throws Exception
+    private void stopServer()
     {
         relayService.stop();
         mcpServer.stop();
-        clientToolbar.removeNavigation(navButton);
         panel.setServerRunning(false, 0, null);
         panel.setRelayStatus(OsrsMcpPanel.RelayStatus.OFF, null);
+    }
+
+    private void restartServer()
+    {
+        log.info("OSRS MCP: Restarting server...");
+        stopServer();
+        try { Thread.sleep(300); } catch (InterruptedException ignored) { Thread.currentThread().interrupt(); }
+        startServer();
     }
 
     @Subscribe
@@ -93,9 +112,6 @@ public class OsrsMcpPlugin extends Plugin
         return configManager.getConfig(OsrsMcpConfig.class);
     }
 
-    /**
-     * Returns the first non-loopback IPv4 LAN address, or null if none found.
-     */
     private String getLanIp()
     {
         try

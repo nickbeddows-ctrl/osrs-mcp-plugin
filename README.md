@@ -56,11 +56,12 @@ The default. RuneLite and your AI tool are on the same machine. No extra configu
 
 Use this when RuneLite is on one device and your AI tool is on another, and both are on the **same router/subnet** (e.g. both on the same WiFi, or both on Ethernet from the same router).
 
-1. In the plugin settings, enable **Allow LAN connections**, then disable and re-enable the plugin to restart the server
+1. In the plugin settings, enable **Allow LAN connections**, then click **Restart server** in the plugin panel (or disable and re-enable the plugin)
 2. Find the local IP of the machine running RuneLite:
    - **macOS:** `ipconfig getifaddr en0` in Terminal
    - **Windows:** `ipconfig` in Command Prompt, look for IPv4 Address
-3. On the other device, point your config at that IP:
+3. The plugin panel will automatically show your LAN IP and the correct config snippet — just copy it directly from there.
+4. Or manually set it on the other device:
 
 ```json
 {
