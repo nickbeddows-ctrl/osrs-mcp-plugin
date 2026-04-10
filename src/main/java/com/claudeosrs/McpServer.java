@@ -32,7 +32,7 @@ public class McpServer
 
     public void start(int port) throws IOException
     {
-        server = HttpServer.create(new InetSocketAddress("127.0.0.1", port), 0);
+        server = HttpServer.create(new InetSocketAddress(config.allowLan() ? "0.0.0.0" : "127.0.0.1", port), 0);
         server.setExecutor(Executors.newCachedThreadPool());
         server.createContext("/mcp",    this::handleMcp);
         server.createContext("/health", this::handleHealth);
