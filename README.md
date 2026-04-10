@@ -129,7 +129,20 @@ To get a URL that never changes across restarts:
 
 > **Note:** The stable subdomain only works with serveo, not the localhost.run fallback. If serveo is unavailable the plugin falls back to a random localhost.run URL automatically.
 
-> **Tip:** Set an Auth Token in the plugin settings for extra security when using cloud relay from a shared or untrusted network.
+>  **Tip:** Set an Auth Token in the plugin settings for extra security when using cloud relay from a shared or untrusted network.
+
+#### Known limitations with stable URLs
+
+The stable subdomain feature depends on serveo's SSH key authentication, which has shown intermittent reliability issues during development and testing. Symptoms include the plugin falling back to a random URL even when the key and domain are correctly registered on serveo.
+
+Likely causes include:
+- Serveo rate-limiting repeated connection attempts during setup
+- Deleted keys or domains not fully clearing on serveo's backend immediately
+- Stale tunnel sessions still counting toward the 3-tunnel free tier limit
+
+If you run into this, waiting a few hours and trying again often resolves it. The feature has worked correctly when serveo's backend is in a clean state.
+
+**This will be revisited once the plugin is live on the Plugin Hub** and tested across a wider range of setups. If stable URLs are critical for your use case, [Tailscale](https://tailscale.com) remains the most reliable cross-device option -- it's free and takes about 2 minutes to set up.
 
 ---
 
