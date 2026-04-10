@@ -31,6 +31,7 @@ public class RelayService
         Pattern.compile("https://console\\.serveo\\.net/ssh/keys\\?add=[A-Za-z0-9%:+/=]+");
 
     @Inject private OsrsMcpConfig config;
+    @Inject private RelayKeyService relayKeyService;
 
     private Process        process;
     private ExecutorService executor;
@@ -85,14 +86,21 @@ public class RelayService
                 ? subdomain + ":80:localhost:" + port
                 : "80:localhost:" + port;
 
-            ProcessBuilder pb = new ProcessBuilder(
-                "ssh",
-                "-o", "StrictHostKeyChecking=no",
-                "-o", "ServerAliveInterval=30",
-                "-o", "ExitOnForwardFailure=yes",
-                "-R", forwardArg,
-                host
-            );
+            // Use the plugin-specific SSH key if it exists
+            java.util.List<String> cmd = new java.util.ArrayList<>();
+            cmd.add("ssh");
+            cmd.add("-o"); cmd.add("StrictHostKeyChecking=no");
+            cmd.add("-o"); cmd.add("ServerAliveInterval=30");
+            cmd.add("-o"); cmd.add("ExitOnForwardFailure=yes");
+            if (relayKeyService.keyExists())
+            {
+                cmd.add("-i"); cmd.add(relayKeyService.getKeyPath());
+                cmd.add("-o"); cmd.add("IdentitiesOnly=yes");
+            }
+            cmd.add("-R"); cmd.add(forwardArg);
+            cmd.add(host);
+
+            ProcessBuilder pb = new ProcessBuilder(cmd);
             pb.redirectErrorStream(true);
             process = pb.start();
 
