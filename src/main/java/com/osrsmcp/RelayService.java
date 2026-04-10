@@ -21,8 +21,12 @@ public class RelayService
         "serveo.net",
         "nokey@localhost.run"
     };
+
+    // Broad pattern: matches any https:// URL in relay output.
+    // Serveo previously used *.serveo.net but now uses *.serveousercontent.com.
+    // localhost.run uses *.lhr.life. Using a general pattern future-proofs both.
     private static final Pattern URL_PATTERN =
-        Pattern.compile("https://[a-zA-Z0-9\\-]+\\.(serveo\\.net|localhost\\.run)");
+        Pattern.compile("https://[a-zA-Z0-9][a-zA-Z0-9.\\-]+");
 
     @Inject private OsrsMcpConfig config;
 
@@ -86,7 +90,9 @@ public class RelayService
             while ((line = reader.readLine()) != null)
             {
                 log.debug("OSRS MCP relay: {}", line);
-                Matcher m = URL_PATTERN.matcher(line);
+                // Strip ANSI escape codes before matching
+                String clean = line.replaceAll("\\x1B\\[[0-9;]*m", "");
+                Matcher m = URL_PATTERN.matcher(clean);
                 if (m.find())
                 {
                     relayUrl = m.group() + "/mcp";
@@ -96,7 +102,6 @@ public class RelayService
                 }
             }
 
-            // Process ended — try next relay if still running
             process.waitFor();
             if (running)
             {
