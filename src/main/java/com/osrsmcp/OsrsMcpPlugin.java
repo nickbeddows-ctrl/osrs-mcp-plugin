@@ -35,6 +35,7 @@ public class OsrsMcpPlugin extends Plugin
     @Inject private OsrsMcpPanel panel;
     @Inject private RelayService relayService;
     @Inject private RelayKeyService relayKeyService;
+    @Inject private ConfigManager configManager;
 
     private NavigationButton navButton;
 
@@ -43,6 +44,7 @@ public class OsrsMcpPlugin extends Plugin
     {
         panel.setRestartCallback(this::restartServer);
         panel.setRelayKeyService(relayKeyService);
+        panel.setConfigManager(configManager);
         startServer();
 
         final BufferedImage icon = ImageUtil.loadImageResource(getClass(), "icon.png");

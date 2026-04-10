@@ -6,6 +6,7 @@ import net.runelite.client.ui.FontManager;
 import net.runelite.client.ui.PluginPanel;
 import net.runelite.api.GameState;
 
+import net.runelite.client.config.ConfigManager;
 import javax.inject.Singleton;
 import javax.swing.*;
 import javax.swing.border.CompoundBorder;
@@ -62,9 +63,14 @@ public class OsrsMcpPanel extends PluginPanel
     private final JButton openRegBtn     = new JButton("Copy register URL");
     private final JButton openDomainBtn  = new JButton("Copy domain URL");
 
+    // Step 4 subdomain field
+    private final JTextField subdomainField  = new JTextField();
+    private final JButton   saveSubdomainBtn = new JButton("Save & restart");
+
     // Callbacks
     private Runnable         restartCallback;
     private RelayKeyService  relayKeyService;
+    private ConfigManager    configManager;
 
     public OsrsMcpPanel()
     {
@@ -102,6 +108,7 @@ public class OsrsMcpPanel extends PluginPanel
 
     public void setRestartCallback(Runnable cb)   { this.restartCallback  = cb; }
     public void setRelayKeyService(RelayKeyService s) { this.relayKeyService = s; }
+    public void setConfigManager(ConfigManager cm)    { this.configManager = cm; refreshSubdomainField(); }
 
     // ── SECTION BUILDERS ─────────────────────────────────────────────────────
 
@@ -253,7 +260,7 @@ public class OsrsMcpPanel extends PluginPanel
         outer.add(Box.createVerticalStrut(4));
         outer.add(buildStep("3", step3Label, buildStep3Buttons()));
         outer.add(Box.createVerticalStrut(4));
-        outer.add(buildStep("4", step4Label, null));
+        outer.add(buildStep("4", step4Label, buildStep4Subdomain()));
 
         return outer;
     }
@@ -353,14 +360,73 @@ public class OsrsMcpPanel extends PluginPanel
         p.setBackground(SECTION_BG);
         p.setAlignmentX(LEFT_ALIGNMENT);
         styleButton(openDomainBtn);
-        openDomainBtn.setToolTipText("Opens console.serveo.net/domains — click Add Domain and enter your subdomain");
         openDomainBtn.addActionListener(e -> {
+            String sub = subdomainField.getText().trim();
+            String hint = sub.isEmpty() ? "" : " (enter: " + sub + ")";
+            openDomainBtn.setToolTipText("console.serveo.net/domains → Add Domain" + hint);
             Toolkit.getDefaultToolkit().getSystemClipboard()
                 .setContents(new StringSelection("https://console.serveo.net/domains"), null);
             flash(openDomainBtn, "URL copied!", "Copy domain URL");
         });
         p.add(openDomainBtn);
         return p;
+    }
+
+    private JPanel buildStep4Subdomain()
+    {
+        JPanel p = new JPanel();
+        p.setLayout(new BoxLayout(p, BoxLayout.Y_AXIS));
+        p.setBackground(SECTION_BG);
+        p.setAlignmentX(LEFT_ALIGNMENT);
+
+        // Text field
+        subdomainField.setFont(new java.awt.Font(java.awt.Font.MONOSPACED, java.awt.Font.PLAIN, 10));
+        subdomainField.setBackground(ColorScheme.DARK_GRAY_COLOR);
+        subdomainField.setForeground(ColorScheme.LIGHT_GRAY_COLOR);
+        subdomainField.setCaretColor(ColorScheme.LIGHT_GRAY_COLOR);
+        subdomainField.setBorder(new CompoundBorder(
+            new MatteBorder(1, 1, 1, 1, ColorScheme.MEDIUM_GRAY_COLOR),
+            new EmptyBorder(3, 6, 3, 6)
+        ));
+        subdomainField.setMaximumSize(new java.awt.Dimension(Integer.MAX_VALUE, 24));
+        subdomainField.setAlignmentX(LEFT_ALIGNMENT);
+        subdomainField.setToolTipText("e.g. yourname-osrs-mcp");
+        p.add(Box.createVerticalStrut(3));
+        p.add(subdomainField);
+        p.add(Box.createVerticalStrut(4));
+
+        // Save & restart button
+        styleButton(saveSubdomainBtn);
+        saveSubdomainBtn.setAlignmentX(LEFT_ALIGNMENT);
+        saveSubdomainBtn.addActionListener(e -> {
+            String val = subdomainField.getText().trim();
+            if (configManager != null)
+                configManager.setConfiguration("osrsmcp", "relaySubdomain", val);
+            if (restartCallback != null)
+            {
+                saveSubdomainBtn.setEnabled(false);
+                saveSubdomainBtn.setText("Restarting...");
+                new Thread(() -> {
+                    restartCallback.run();
+                    javax.swing.SwingUtilities.invokeLater(() -> {
+                        saveSubdomainBtn.setEnabled(true);
+                        saveSubdomainBtn.setText("Save & restart");
+                    });
+                }, "osrs-mcp-subdomain-restart").start();
+            }
+        });
+        p.add(saveSubdomainBtn);
+        return p;
+    }
+
+    private void refreshSubdomainField()
+    {
+        SwingUtilities.invokeLater(() -> {
+            if (configManager == null) return;
+            String current = configManager.getConfiguration("osrsmcp", "relaySubdomain");
+            if (current != null && !current.isEmpty())
+                subdomainField.setText(current);
+        });
     }
 
     private JPanel buildToolsSection()
@@ -411,16 +477,18 @@ public class OsrsMcpPanel extends PluginPanel
             openRegBtn.setEnabled(hasKey);
 
             // Step 3 — Add domain on serveo
+            String sub = subdomainField.getText().trim();
+            String subHint = sub.isEmpty() ? "yourname-osrs-mcp" : sub;
             step3Label.setText(hasKey
-                ? "<html>Copy the domain URL and open it in your browser. Click Add Domain and enter your chosen subdomain (e.g. yourname-osrs-mcp).</html>"
+                ? "<html>Copy the domain URL, open it in your browser, click Add Domain and enter <b>" + subHint + "</b></html>"
                 : "<html>Complete steps 1 and 2 first</html>");
             step3Label.setForeground(hasKey ? STEP_ACTIVE : STEP_TODO);
             openDomainBtn.setEnabled(hasKey);
 
-            // Step 4 — Set subdomain in settings
+            // Step 4 — Enter subdomain in panel and save
             step4Label.setText(active
                 ? "<html>Stable URL active!</html>"
-                : "<html>Set your subdomain under Cloud Relay in plugin settings, then click Restart server.</html>");
+                : "<html>Type your subdomain below and click Save & restart.</html>");
             step4Label.setForeground(active ? STEP_DONE : (hasKey ? STEP_ACTIVE : STEP_TODO));
         });
     }
