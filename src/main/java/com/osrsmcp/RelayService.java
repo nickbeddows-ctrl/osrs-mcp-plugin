@@ -22,8 +22,10 @@ public class RelayService
         "nokey@localhost.run"
     };
 
+    // Real tunnel URLs always have at least 2 dots (e.g. abc.serveousercontent.com, abc.lhr.life).
+    // Bare service domains like localhost.run or serveo.net only have 1 dot and are rejected.
     private static final Pattern URL_PATTERN =
-        Pattern.compile("https://[a-zA-Z0-9][a-zA-Z0-9.\\-]+");
+        Pattern.compile("https://[a-zA-Z0-9][a-zA-Z0-9\\-]+\\.[a-zA-Z0-9][a-zA-Z0-9\\-]+\\.[a-zA-Z]{2,}");
 
     private static final Pattern REGISTER_PATTERN =
         Pattern.compile("https://console\\.serveo\\.net/ssh/keys\\?add=[A-Za-z0-9%:+/=]+");

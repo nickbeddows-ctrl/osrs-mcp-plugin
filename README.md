@@ -86,57 +86,50 @@ If the connection times out even with LAN mode enabled, your devices are likely 
 
 ### Mode 3 — Cloud Relay (different networks, no extra software)
 
-Use this when your devices are on different networks or subnets, and you don't want to install extra software like Tailscale or ngrok.
+Use this when your devices are on different networks or subnets and you don't want to install extra software like Tailscale or ngrok.
 
-The plugin uses **SSH reverse tunnelling** — SSH is built into macOS and Windows 10/11, so nothing extra needs to be installed. It creates a temporary public HTTPS URL that routes traffic through to your local MCP server.
+The plugin uses **SSH reverse tunnelling** — SSH is built into macOS and Windows 10/11, so nothing extra needs to be installed. It creates a public HTTPS URL that routes traffic through to your local MCP server.
 
-1. In the plugin settings, enable **Cloud relay**
-2. The plugin panel will show a URL like `https://abc123.serveo.net/mcp` once connected
-3. Use that URL in your config on any device (no `--allow-http` needed — it's HTTPS):
+**How it works:** The plugin spawns `ssh -R 80:localhost:8282 serveo.net` as a background process. [Serveo](https://serveo.net) is a free public SSH relay. If Serveo is unavailable, the plugin automatically falls back to [localhost.run](https://localhost.run), which works identically. Both are free with no account required for basic use.
 
-```json
-{
-  "mcpServers": {
-    "osrs": {
-      "command": "npx",
-      "args": ["mcp-remote", "https://abc123.serveo.net/mcp"]
-    }
-  }
-}
-```
+#### Step 1 — Random URL (quick start)
 
-The panel also has a **Copy** button so you don't have to type the URL manually.
+1. Set **Connection mode** to **Cloud relay** in plugin settings
+2. Click **Restart server** in the plugin panel
+3. Once connected, the panel shows a URL like `https://abc123.serveousercontent.com/mcp`
+4. Use the **Copy config** button to copy the full JSON snippet
+5. Paste it into your Claude Desktop config and restart Claude Desktop
 
-**How it works:** The plugin runs `ssh -R 80:localhost:8282 serveo.net` as a background process. Serveo is a free public SSH relay service. If Serveo is unavailable, it automatically falls back to `localhost.run`, which works identically. Both are free and require no account.
+> The random URL changes every time the plugin restarts. If that's fine for occasional use, you're done. For a permanent URL, see Step 2.
 
-> **Note:** By default the relay URL is random and changes every time the plugin restarts. See below for how to get a stable URL.
+#### Step 2 — Stable URL (recommended for regular use)
 
-> **Tip:** Set an Auth Token in the plugin settings for extra security when using cloud relay.
+To get a URL that never changes across restarts:
 
-#### Getting a stable URL (recommended)
-
-By default, serveo assigns a random URL each time the tunnel starts, which means you have to update your config every time RuneLite restarts. You can fix this by setting a **Relay subdomain** in the plugin settings.
-
-1. In the plugin settings, set **Relay subdomain** to something unique — e.g. `yourname-osrs-mcp`
-2. Your URL will always be `https://yourname-osrs-mcp.serveo.net/mcp` — it never changes
-3. Set your config once and never touch it again:
+1. Click **Register on serveo** in the plugin panel — this copies `https://console.serveo.net` to your clipboard
+2. Open that URL in your browser and sign in with Google or GitHub — this registers your SSH public key with serveo
+3. In plugin settings, set **Relay subdomain** to something unique (e.g. `yourname-osrs-mcp`)
+4. Click **Restart server** — your URL is now always `https://yourname-osrs-mcp.serveousercontent.com/mcp`
+5. Set your config once and never change it again:
 
 ```json
 {
   "mcpServers": {
     "osrs": {
       "command": "npx",
-      "args": ["mcp-remote", "https://yourname-osrs-mcp.serveo.net/mcp"]
+      "args": ["mcp-remote", "https://yourname-osrs-mcp.serveousercontent.com/mcp"]
     }
   }
 }
 ```
 
-> **Note:** Serveo requires a one-time SSH key registration before custom subdomains work. If you haven't registered, the plugin will detect this and show a **Register** button in the panel -- click it, sign in with Google or GitHub, then click **Restart server**. After that your subdomain works permanently.
+> **Why registration?** Serveo requires a one-time SSH key registration to reserve a custom subdomain. This links the subdomain to your specific machine's SSH key so no one else can claim it. It is a simple browser sign-in and takes under a minute.
 
-> **Note:** The subdomain must be unique on serveo.net. Use something specific to you -- your username plus a suffix works well (e.g. `nick-osrs-mcp`).
+> **Note:** The subdomain must be unique on serveo. If it's already taken, choose a different name. Use something specific to you — your username plus a suffix works well.
 
-> **Note:** The subdomain only works with serveo.net, not the localhost.run fallback. If serveo is unavailable, the plugin falls back to a random localhost.run URL automatically.
+> **Note:** The stable subdomain only works with serveo, not the localhost.run fallback. If serveo is unavailable the plugin falls back to a random localhost.run URL automatically.
+
+> **Tip:** Set an Auth Token in the plugin settings for extra security when using cloud relay from a shared or untrusted network.
 
 ---
 
