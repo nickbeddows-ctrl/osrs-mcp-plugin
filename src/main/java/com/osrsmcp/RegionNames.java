@@ -1,4 +1,4 @@
-package com.claudeosrs;
+package com.osrsmcp;
 
 import java.util.HashMap;
 import java.util.Map;

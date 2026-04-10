@@ -1,12 +1,12 @@
-package com.claudeosrs;
+package com.osrsmcp;
 
 import net.runelite.client.config.Config;
 import net.runelite.client.config.ConfigGroup;
 import net.runelite.client.config.ConfigItem;
 import net.runelite.client.config.ConfigSection;
 
-@ConfigGroup("claudeosrs")
-public interface ClaudeOsrsConfig extends Config
+@ConfigGroup("osrsmcp")
+public interface OsrsMcpConfig extends Config
 {
     @ConfigSection(name = "Connection", description = "MCP server connection settings", position = 0)
     String connectionSection = "connection";

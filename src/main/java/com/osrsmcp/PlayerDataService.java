@@ -1,4 +1,4 @@
-package com.claudeosrs;
+package com.osrsmcp;
 
 import net.runelite.api.*;
 import net.runelite.api.coords.WorldPoint;
@@ -13,7 +13,7 @@ public class PlayerDataService
 {
     @Inject private Client client;
     @Inject private ItemManager itemManager;
-    @Inject private ClaudeOsrsConfig config;
+    @Inject private OsrsMcpConfig config;
 
     public boolean isLoggedIn()
     {

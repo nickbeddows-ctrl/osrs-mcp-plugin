@@ -1,4 +1,4 @@
-package com.claudeosrs;
+package com.osrsmcp;
 
 
 import com.google.gson.Gson;
@@ -24,12 +24,12 @@ import java.util.concurrent.*;
 public class McpServer
 {
     private static final String MCP_VERSION    = "2024-11-05";
-    private static final String SERVER_NAME    = "claude-osrs";
+    private static final String SERVER_NAME    = "osrs-mcp";
     private static final String SERVER_VERSION = "1.0.0";
 
     @Inject private PlayerDataService playerDataService;
     @Inject private ClientThread clientThread;
-    @Inject private ClaudeOsrsConfig config;
+    @Inject private OsrsMcpConfig config;
 
     private HttpServer server;
     @Inject private Gson gson;
@@ -42,7 +42,7 @@ public class McpServer
         server.createContext("/mcp",    this::handleMcp);
         server.createContext("/health", this::handleHealth);
         server.start();
-        log.info("Claude OSRS MCP server started on http://127.0.0.1:{}/mcp", port);
+        log.info("OSRS MCP MCP server started on http://127.0.0.1:{}/mcp", port);
     }
 
     public void stop()
@@ -52,7 +52,7 @@ public class McpServer
             sseClients.forEach(SseClient::close);
             sseClients.clear();
             server.stop(1);
-            log.info("Claude OSRS MCP server stopped");
+            log.info("OSRS MCP MCP server stopped");
         }
     }
 
@@ -250,7 +250,7 @@ public class McpServer
     private Map<String, Object> privacyError(String type)
     {
         Map<String, Object> m = new LinkedHashMap<>();
-        m.put("error", "Access to '" + type + "' is disabled in the Claude OSRS plugin settings.");
+        m.put("error", "Access to '" + type + "' is disabled in the OSRS MCP plugin settings.");
         return m;
     }
 

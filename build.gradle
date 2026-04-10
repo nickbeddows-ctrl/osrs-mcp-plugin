@@ -15,7 +15,7 @@ dependencies {
     annotationProcessor 'org.projectlombok:lombok:1.18.30'
 }
 
-group = 'com.claudeosrs'
+group = 'com.osrsmcp'
 version = '1.0.0'
 
 java {
@@ -25,6 +25,6 @@ java {
 
 jar {
     manifest {
-        attributes('Plugin-Class': 'com.claudeosrs.ClaudeOsrsPlugin')
+        attributes('Plugin-Class': 'com.osrsmcp.OsrsMcpPlugin')
     }
 }

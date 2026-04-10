@@ -1,4 +1,4 @@
-package com.claudeosrs;
+package com.osrsmcp;
 
 import com.google.inject.Provides;
 import lombok.extern.slf4j.Slf4j;
@@ -18,17 +18,17 @@ import java.io.IOException;
 
 @Slf4j
 @PluginDescriptor(
-    name = "Claude OSRS",
+    name = "OSRS MCP",
     description = "Connects RuneLite to Claude AI via a local MCP server for context-aware in-game assistance.",
     tags = {"claude", "ai", "stats", "helper", "assistant", "mcp"}
 )
-public class ClaudeOsrsPlugin extends Plugin
+public class OsrsMcpPlugin extends Plugin
 {
     @Inject private Client client;
     @Inject private ClientToolbar clientToolbar;
-    @Inject private ClaudeOsrsConfig config;
+    @Inject private OsrsMcpConfig config;
     @Inject private McpServer mcpServer;
-    @Inject private ClaudeOsrsPanel panel;
+    @Inject private OsrsMcpPanel panel;
 
     private NavigationButton navButton;
 
@@ -42,12 +42,12 @@ public class ClaudeOsrsPlugin extends Plugin
         }
         catch (IOException e)
         {
-            log.error("Claude OSRS: Failed to start MCP server on port {}", config.port(), e);
+            log.error("OSRS MCP: Failed to start MCP server on port {}", config.port(), e);
             panel.setError("Port " + config.port() + " is in use. Change it in settings.");
         }
         final BufferedImage icon = ImageUtil.loadImageResource(getClass(), "icon.png");
         navButton = NavigationButton.builder()
-            .tooltip("Claude OSRS")
+            .tooltip("OSRS MCP")
             .icon(icon)
             .priority(10)
             .panel(panel)
@@ -70,8 +70,8 @@ public class ClaudeOsrsPlugin extends Plugin
     }
 
     @Provides
-    ClaudeOsrsConfig provideConfig(ConfigManager configManager)
+    OsrsMcpConfig provideConfig(ConfigManager configManager)
     {
-        return configManager.getConfig(ClaudeOsrsConfig.class);
+        return configManager.getConfig(OsrsMcpConfig.class);
     }
 }

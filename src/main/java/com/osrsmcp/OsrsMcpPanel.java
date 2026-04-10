@@ -1,4 +1,4 @@
-package com.claudeosrs;
+package com.osrsmcp;
 
 import net.runelite.api.GameState;
 import net.runelite.client.ui.PluginPanel;
@@ -9,7 +9,7 @@ import javax.swing.border.EmptyBorder;
 import java.awt.*;
 
 @Singleton
-public class ClaudeOsrsPanel extends PluginPanel
+public class OsrsMcpPanel extends PluginPanel
 {
     private final JLabel statusDot  = new JLabel("●");
     private final JLabel statusText = new JLabel("Starting...");
@@ -17,13 +17,13 @@ public class ClaudeOsrsPanel extends PluginPanel
     private final JLabel urlLabel   = new JLabel();
     private final JTextArea infoArea = new JTextArea();
 
-    public ClaudeOsrsPanel()
+    public OsrsMcpPanel()
     {
         setLayout(new BorderLayout());
         setBorder(new EmptyBorder(12, 12, 12, 12));
         setBackground(new Color(40, 40, 40));
 
-        JLabel title = new JLabel("Claude OSRS");
+        JLabel title = new JLabel("OSRS MCP");
         title.setForeground(Color.WHITE);
         title.setFont(title.getFont().deriveFont(Font.BOLD, 16f));
         title.setBorder(new EmptyBorder(0, 0, 12, 0));
