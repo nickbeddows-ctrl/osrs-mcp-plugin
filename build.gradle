@@ -7,7 +7,7 @@ repositories {
     maven { url = 'https://repo.runelite.net' }
 }
 
-def runeLiteVersion = '1.10.37'
+def runeLiteVersion = 'latest.release'
 
 dependencies {
     compileOnly group: 'net.runelite', name: 'client', version: runeLiteVersion
