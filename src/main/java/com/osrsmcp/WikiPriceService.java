@@ -35,8 +35,14 @@ public class WikiPriceService
     // id -> { name, examine, limit, highalch, lowalch }
     private final Map<Integer, ItemMeta> itemMeta  = new ConcurrentHashMap<>();
     // id -> { high, low, highTime, lowTime }
-    private final Map<Integer, PriceData> priceCache = new ConcurrentHashMap<>();
-    volatile long lastPriceFetch = 0;  // package-private for PlayerDataService
+    private final Map<Integer, PriceData>  priceCache    = new ConcurrentHashMap<>();
+    private final Map<Integer, VolumeData> volumeCache5m = new ConcurrentHashMap<>();
+    private final Map<Integer, VolumeData> volumeCache1h = new ConcurrentHashMap<>();
+    volatile long lastPriceFetch = 0;
+    private volatile long last5mFetch    = 0;
+    private volatile long last1hFetch    = 0;
+    private static final long TTL_5M     = 5  * 60 * 1000L;
+    private static final long TTL_1H     = 60 * 60 * 1000L;
     private volatile boolean mappingLoaded = false;
 
     // ── Data classes ──────────────────────────────────────────────────────────
@@ -62,6 +68,16 @@ public class WikiPriceService
         public double marginPct(){ return low  > 0 ? (margin() * 100.0 / low) : 0; }
     }
 
+    public static class VolumeData
+    {
+        public int avgHigh;
+        public int avgLow;
+        public int highVol;
+        public int lowVol;
+
+        public int totalVol() { return highVol + lowVol; }
+    }
+
     // ── Public API ────────────────────────────────────────────────────────────
 
     /** Returns price data for a specific item, fetching if cache is stale. */
@@ -84,6 +100,21 @@ public class WikiPriceService
         return result;
     }
 
+    public VolumeData getVolume5m(int itemId)
+    {
+        ensureVolumeLoaded(false);
+        return volumeCache5m.get(itemId);
+    }
+
+    public VolumeData getVolume1h(int itemId)
+    {
+        ensureVolumeLoaded(true);
+        return volumeCache1h.get(itemId);
+    }
+
+    public long getAge5mMs() { return System.currentTimeMillis() - last5mFetch; }
+    public long getAge1hMs() { return System.currentTimeMillis() - last1hFetch; }
+
     public ItemMeta getMeta(int itemId)
     {
         ensureMappingLoaded();
@@ -102,6 +133,46 @@ public class WikiPriceService
     }
 
     // ── Internal ──────────────────────────────────────────────────────────────
+
+    private void ensureVolumeLoaded(boolean oneHour)
+    {
+        String url  = "https://prices.runescape.wiki/api/v1/osrs/" + (oneHour ? "1h" : "5m");
+        Map<Integer, VolumeData> cache = oneHour ? volumeCache1h : volumeCache5m;
+        long lastFetch = oneHour ? last1hFetch : last5mFetch;
+        long ttl       = oneHour ? TTL_1H : TTL_5M;
+
+        if (System.currentTimeMillis() - lastFetch < ttl) return;
+        try
+        {
+            String body = get(url);
+            JsonObject root = new com.google.gson.JsonParser().parse(body).getAsJsonObject();
+            JsonObject data = root.getAsJsonObject("data");
+            if (data == null) return;
+
+            for (Map.Entry<String, JsonElement> entry : data.entrySet())
+            {
+                try
+                {
+                    int id = Integer.parseInt(entry.getKey());
+                    JsonObject obj = entry.getValue().getAsJsonObject();
+                    VolumeData vd  = new VolumeData();
+                    vd.avgHigh  = obj.has("avgHighPrice") && !obj.get("avgHighPrice").isJsonNull() ? obj.get("avgHighPrice").getAsInt() : 0;
+                    vd.avgLow   = obj.has("avgLowPrice")  && !obj.get("avgLowPrice").isJsonNull()  ? obj.get("avgLowPrice").getAsInt()  : 0;
+                    vd.highVol  = obj.has("highPriceVolume") ? obj.get("highPriceVolume").getAsInt() : 0;
+                    vd.lowVol   = obj.has("lowPriceVolume")  ? obj.get("lowPriceVolume").getAsInt()  : 0;
+                    cache.put(id, vd);
+                }
+                catch (Exception ignored) {}
+            }
+            if (oneHour) last1hFetch = System.currentTimeMillis();
+            else         last5mFetch = System.currentTimeMillis();
+            log.debug("OSRS MCP: Loaded {} volume entries ({})", cache.size(), oneHour ? "1h" : "5m");
+        }
+        catch (Exception e)
+        {
+            log.warn("OSRS MCP: Failed to fetch {} volume data: {}", oneHour ? "1h" : "5m", e.getMessage());
+        }
+    }
 
     private void ensureMappingLoaded()
     {

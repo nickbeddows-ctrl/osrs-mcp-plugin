@@ -560,7 +560,59 @@ public class PlayerDataService
         Map<String, Object> m = new LinkedHashMap<>(); m.put("error", message); return m;
     }
 
-    // ── BANK CLASSIFICATION (Phase 10) ───────────────────────────────────────
+    public Map<String, Object> buildPriceTrends(List<Integer> itemIds)
+    {
+        Map<String, Object> result = new LinkedHashMap<>();
+        List<Map<String, Object>> items = new ArrayList<>();
+
+        for (int id : itemIds)
+        {
+            WikiPriceService.PriceData  latest = wikiPriceService.getPrice(id);
+            WikiPriceService.VolumeData vol5m  = wikiPriceService.getVolume5m(id);
+            WikiPriceService.VolumeData vol1h  = wikiPriceService.getVolume1h(id);
+            WikiPriceService.ItemMeta   meta   = wikiPriceService.getMeta(id);
+
+            Map<String, Object> item = new LinkedHashMap<>();
+            item.put("id",   id);
+            item.put("name", meta != null ? meta.name : itemManager.getItemComposition(id).getName());
+
+            if (latest != null)
+            {
+                item.put("current_buy",  latest.high);
+                item.put("current_sell", latest.low);
+                item.put("margin",       latest.margin());
+            }
+            if (vol5m != null)
+            {
+                item.put("avg_buy_5m",    vol5m.avgHigh);
+                item.put("avg_sell_5m",   vol5m.avgLow);
+                item.put("volume_5m",     vol5m.totalVol());
+            }
+            if (vol1h != null)
+            {
+                item.put("avg_buy_1h",    vol1h.avgHigh);
+                item.put("avg_sell_1h",   vol1h.avgLow);
+                item.put("volume_1h",     vol1h.totalVol());
+
+                // Trend direction based on buy price: 5m avg vs 1h avg
+                if (vol5m != null && vol5m.avgHigh > 0 && vol1h.avgHigh > 0)
+                {
+                    double changePct = (vol5m.avgHigh - vol1h.avgHigh) * 100.0 / vol1h.avgHigh;
+                    String direction = changePct > 1.0 ? "rising" : changePct < -1.0 ? "falling" : "stable";
+                    item.put("trend",            direction);
+                    item.put("trend_change_pct", Math.round(changePct * 10) / 10.0);
+                }
+            }
+            if (meta != null) item.put("ge_limit", meta.limit);
+            items.add(item);
+        }
+
+        result.put("items",              items);
+        result.put("prices_age_seconds", wikiPriceService.getAge5mMs() / 1000);
+        return result;
+    }
+
+        // ── BANK CLASSIFICATION (Phase 10) ───────────────────────────────────────
 
     public Map<String, Object> buildBankClassified()
     {
@@ -824,12 +876,13 @@ public class PlayerDataService
             if (item.getId() <= 0 || item.getQuantity() <= 0) continue;
             WikiPriceService.PriceData pd   = wikiPriceService.getPrice(item.getId());
             WikiPriceService.ItemMeta  meta = wikiPriceService.getMeta(item.getId());
+            WikiPriceService.VolumeData vol = wikiPriceService.getVolume5m(item.getId());
             if (pd == null || pd.high <= 0 || pd.low <= 0) continue;
             int margin = pd.margin();
             if (margin <= 0) continue;
 
-            // Can they afford to buy at least 1?
             boolean canAfford = coins >= pd.high;
+            int totalVol5m = vol != null ? vol.totalVol() : 0;
 
             Map<String, Object> s = new LinkedHashMap<>();
             s.put("name",           meta != null ? meta.name : itemManager.getItemComposition(item.getId()).getName());
@@ -838,6 +891,8 @@ public class PlayerDataService
             s.put("sell_at",        pd.low);
             s.put("margin",         margin);
             s.put("margin_pct",     Math.round(pd.marginPct() * 10) / 10.0);
+            s.put("volume_5m",      totalVol5m);
+            s.put("volume_hourly_est", totalVol5m * 12); // extrapolate 5m → 1h
             s.put("can_afford",     canAfford);
             if (meta != null)
             {
@@ -849,12 +904,14 @@ public class PlayerDataService
             suggestions.add(s);
         }
 
-        // Sort: highest margin % first, but deprioritise items you can't afford
+        // Sort: score = margin_pct * log(volume+1), deprioritise unaffordable
         suggestions.sort((a, b) -> {
             boolean aAfford = (boolean) a.get("can_afford");
             boolean bAfford = (boolean) b.get("can_afford");
             if (aAfford != bAfford) return bAfford ? 1 : -1;
-            return Double.compare((double) b.get("margin_pct"), (double) a.get("margin_pct"));
+            double aScore = (double) a.get("margin_pct") * Math.log1p((int) a.get("volume_5m"));
+            double bScore = (double) b.get("margin_pct") * Math.log1p((int) b.get("volume_5m"));
+            return Double.compare(bScore, aScore);
         });
 
         result.put("prices_age_seconds",
