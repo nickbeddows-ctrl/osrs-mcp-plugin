@@ -74,6 +74,9 @@ public class OsrsMcpPanel extends PluginPanel
     private final JLabel tailscaleStep3Label = new JLabel();
     private final JButton copyTailscaleUrlBtn = new JButton("Copy tailscale.com");
 
+    // Root panel ref for revalidation
+    private JPanel rootPanel;
+
     // Section visibility refs
     private JPanel relayPanelRef;
     private JLabel relayHeaderRef;
@@ -92,6 +95,7 @@ public class OsrsMcpPanel extends PluginPanel
         setBackground(ColorScheme.DARK_GRAY_COLOR);
 
         JPanel root = new JPanel();
+        rootPanel = root;
         root.setLayout(new BoxLayout(root, BoxLayout.Y_AXIS));
         root.setBackground(ColorScheme.DARK_GRAY_COLOR);
         root.setBorder(new EmptyBorder(8, 8, 8, 8));
@@ -494,9 +498,17 @@ public class OsrsMcpPanel extends PluginPanel
         return p;
     }
 
+    public void refreshSectionsForMode(ConnectionMode mode)
+    {
+        SwingUtilities.invokeLater(() -> {
+            currentMode = mode;
+            refreshSections();
+        });
+    }
+
     private void refreshSections()
     {
-        // Already on EDT when called from setServerRunning's invokeLater
+        // Must be called on EDT
         boolean isRelay     = currentMode == ConnectionMode.CLOUD_RELAY;
         boolean isTailscale = currentMode == ConnectionMode.TAILSCALE;
 
@@ -507,7 +519,8 @@ public class OsrsMcpPanel extends PluginPanel
 
         refreshTailscaleSteps();
 
-        // Tell the parent to recalculate layout after visibility changes
+        // Tell the root container to recalculate layout
+        if (rootPanel != null) { rootPanel.revalidate(); rootPanel.repaint(); }
         revalidate();
         repaint();
     }

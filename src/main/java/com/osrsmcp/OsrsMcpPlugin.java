@@ -128,13 +128,8 @@ public class OsrsMcpPlugin extends Plugin
         if (!event.getGroup().equals("osrsmcp")) return;
         if (!event.getKey().equals("connectionMode")) return;
 
-        // Refresh panel sections immediately when mode changes in settings
-        String lanIp = null;
-        if (config.connectionMode() == ConnectionMode.LAN)
-            lanIp = getLanIp();
-        else if (config.connectionMode() == ConnectionMode.TAILSCALE)
-            lanIp = tailscaleService.getTailscaleIp();
-        panel.setServerRunning(mcpServer != null, config.port(), config.connectionMode(), lanIp);
+        // Update panel sections immediately when mode changes -- no restart needed
+        panel.refreshSectionsForMode(config.connectionMode());
     }
 
     @Provides
