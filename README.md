@@ -26,6 +26,12 @@ Ask your AI assistant things like:
 | `get_slayer_task` | Current task, kills remaining, location, points and streak |
 | `get_clue_scroll` | Whether you have an active clue scroll and which tier |
 | `get_ge_offers` | All active Grand Exchange offers |
+| `get_bank_value` | Total GE value of your bank, with all items sorted by value (requires opening bank first) |
+| `get_collection_log` | Collection log progress: total unique items and per-category breakdown |
+| `get_prayers` | Currently active prayers and unlock status for Preserve, Rigour, Augury, Piety |
+| `get_installed_plugins` | All installed RuneLite plugins (built-in and Plugin Hub) with enabled state |
+| `get_nearby_npcs` | NPCs currently visible, sorted by combat level |
+| `get_world_info` | Current world number and type (members, PvP, high risk, deadman, etc.) |
 
 ---
 
