@@ -46,6 +46,7 @@ public class PlayerDataService
     @Inject private OsrsMcpConfig config;
     @Inject private PluginManager pluginManager;
     @Inject private okhttp3.OkHttpClient httpClient;
+    @Inject private EquipmentStatsService equipmentStatsService;
     @Inject private ConfigManager configManager;
     @Inject private WikiPriceService wikiPriceService;
 
@@ -843,6 +844,84 @@ public class PlayerDataService
             return val.trim();
         }
         return null;
+    }
+
+        // ── EQUIPMENT STATS (Phase 12) ───────────────────────────────────────────
+
+    public Map<String, Object> buildEquipmentStats()
+    {
+        if (!isLoggedIn()) return errorMap("Player is not logged in");
+
+        ItemContainer worn = client.getItemContainer(InventoryID.EQUIPMENT);
+        if (worn == null) return errorMap("No equipment data available");
+
+        Map<String, Object> result      = new LinkedHashMap<>();
+        Map<String, Object> bySlot      = new LinkedHashMap<>();
+        Map<String, Object> missing     = new LinkedHashMap<>();
+
+        // Running totals
+        int totalAstab = 0, totalAslash = 0, totalAcrush = 0, totalAmagic = 0, totalArange = 0;
+        int totalDstab = 0, totalDslash = 0, totalDcrush = 0, totalDmagic = 0, totalDrange = 0;
+        int totalStr = 0, totalPrayer = 0;
+
+        String[] slotNames = {"head","cape","amulet","weapon","body","shield",
+                              "legs","hands","feet","ring","ammo","","",""};
+
+        Item[] items = worn.getItems();
+        for (int i = 0; i < items.length && i < slotNames.length; i++)
+        {
+            Item item = items[i];
+            if (item == null || item.getId() <= 0) continue;
+            String name = itemManager.getItemComposition(item.getId()).getName();
+            if (name == null || name.equals("null") || name.isEmpty()) continue;
+
+            EquipmentStatsService.EquipmentStats stats = equipmentStatsService.getStats(name);
+            if (stats != null)
+            {
+                bySlot.put(slotNames[i].isEmpty() ? "slot_" + i : slotNames[i], stats.toMap());
+                totalAstab  += stats.astab;  totalAslash += stats.aslash;
+                totalAcrush += stats.acrush; totalAmagic += stats.amagic;
+                totalArange += stats.arange;
+                totalDstab  += stats.dstab;  totalDslash += stats.dslash;
+                totalDcrush += stats.dcrush; totalDmagic += stats.dmagic;
+                totalDrange += stats.drange;
+                totalStr    += stats.str;    totalPrayer += stats.prayer;
+            }
+            else
+            {
+                missing.put(slotNames[i].isEmpty() ? "slot_" + i : slotNames[i], name);
+            }
+        }
+
+        // Totals
+        Map<String, Object> totals = new LinkedHashMap<>();
+        Map<String, Object> attackTotals = new LinkedHashMap<>();
+        attackTotals.put("stab", totalAstab); attackTotals.put("slash", totalAslash);
+        attackTotals.put("crush", totalAcrush); attackTotals.put("magic", totalAmagic);
+        attackTotals.put("ranged", totalArange);
+        Map<String, Object> defenceTotals = new LinkedHashMap<>();
+        defenceTotals.put("stab", totalDstab); defenceTotals.put("slash", totalDslash);
+        defenceTotals.put("crush", totalDcrush); defenceTotals.put("magic", totalDmagic);
+        defenceTotals.put("ranged", totalDrange);
+        Map<String, Object> otherTotals = new LinkedHashMap<>();
+        otherTotals.put("strength", totalStr);
+        otherTotals.put("prayer", totalPrayer);
+        totals.put("attack_bonuses",  attackTotals);
+        totals.put("defence_bonuses", defenceTotals);
+        totals.put("other_bonuses",   otherTotals);
+
+        // Estimated melee max hit (aggressive style, no prayer/potion)
+        int baseLvl = client.getRealSkillLevel(net.runelite.api.Skill.STRENGTH);
+        int effectiveStr = baseLvl + 8 + 3; // +3 for aggressive style
+        double maxHitRaw = 0.5 + effectiveStr * (totalStr + 64.0) / 640.0;
+        totals.put("est_max_hit_melee_no_boost", (int) maxHitRaw);
+
+        result.put("totals",  totals);
+        result.put("by_slot", bySlot);
+        if (!missing.isEmpty())
+            result.put("stats_unavailable", missing);
+
+        return result;
     }
 
         // ── BANK CLASSIFICATION (Phase 10) ───────────────────────────────────────
