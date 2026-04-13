@@ -6,11 +6,15 @@ import net.runelite.api.QuestState;
 import net.runelite.api.Varbits;
 import net.runelite.api.VarPlayer;
 import net.runelite.api.GrandExchangeOffer;
+import net.runelite.client.plugins.Plugin;
+import net.runelite.client.plugins.PluginDescriptor;
 import net.runelite.api.GrandExchangeOfferState;
 import net.runelite.api.gameval.DBTableID;
 import net.runelite.api.gameval.VarPlayerID;
 import net.runelite.api.gameval.VarbitID;
 import net.runelite.api.GrandExchangeOffer;
+import net.runelite.client.plugins.Plugin;
+import net.runelite.client.plugins.PluginDescriptor;
 import net.runelite.api.GrandExchangeOfferState;
 import net.runelite.api.coords.WorldPoint;
 import net.runelite.client.game.ItemManager;
@@ -25,6 +29,7 @@ public class PlayerDataService
     @Inject private Client client;
     @Inject private ItemManager itemManager;
     @Inject private OsrsMcpConfig config;
+    @Inject private net.runelite.client.plugins.PluginManager pluginManager;
 
     public boolean isLoggedIn()
     {
@@ -44,6 +49,7 @@ public class PlayerDataService
         data.put("slayer",  buildSlayerTask());
         data.put("clue",    buildClueScroll());
         data.put("ge",      buildGeOffers());
+        data.put("plugins", buildInstalledPlugins());
         return data;
     }
 
@@ -300,6 +306,41 @@ public class PlayerDataService
             entry.put("total_spent", offer.getSpent());
             result.add(entry);
         }
+        return result;
+    }
+
+        public Map<String, Object> buildInstalledPlugins()
+    {
+        Map<String, Object> result = new LinkedHashMap<>();
+        List<Map<String, Object>> pluginList = new ArrayList<>();
+
+        for (Plugin plugin : pluginManager.getPlugins())
+        {
+            PluginDescriptor descriptor = plugin.getClass().getAnnotation(PluginDescriptor.class);
+            if (descriptor == null) continue;
+            if (descriptor.hidden()) continue;
+
+            Map<String, Object> entry = new LinkedHashMap<>();
+            entry.put("name", descriptor.name());
+            entry.put("enabled", pluginManager.isPluginEnabled(plugin));
+
+            // Distinguish built-in vs Plugin Hub by package name
+            String pkg = plugin.getClass().getPackageName();
+            entry.put("type", pkg.startsWith("net.runelite.client.plugins") ? "builtin" : "hub");
+
+            pluginList.add(entry);
+        }
+
+        // Sort: hub plugins first, then alphabetically
+        pluginList.sort((a, b) -> {
+            int typeCompare = ((String) a.get("type")).compareTo((String) b.get("type"));
+            if (typeCompare != 0) return typeCompare;
+            return ((String) a.get("name")).compareToIgnoreCase((String) b.get("name"));
+        });
+
+        result.put("total", pluginList.size());
+        result.put("enabled_count", pluginList.stream().filter(p -> (Boolean) p.get("enabled")).count());
+        result.put("plugins", pluginList);
         return result;
     }
 

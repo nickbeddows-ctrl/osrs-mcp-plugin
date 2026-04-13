@@ -572,7 +572,8 @@ public class OsrsMcpPanel extends PluginPanel
             {"get_diary_states", "Achievement diary tiers"},
             {"get_slayer_task",  "Current Slayer task"},
             {"get_clue_scroll",  "Active clue scroll tier"},
-            {"get_ge_offers",    "GE offer slots"},
+            {"get_ge_offers",          "GE offer slots"},
+            {"get_installed_plugins",   "Installed RuneLite plugins"},
         };
         for (String[] t : tools) p.add(buildToolRow(t[0], t[1]));
         return p;
