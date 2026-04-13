@@ -1,6 +1,10 @@
 package com.osrsmcp;
 
 import net.runelite.api.*;
+import net.runelite.api.Quest;
+import net.runelite.api.QuestState;
+import net.runelite.api.Varbits;
+import net.runelite.api.VarPlayer;
 import net.runelite.api.coords.WorldPoint;
 import net.runelite.client.game.ItemManager;
 
@@ -28,6 +32,8 @@ public class PlayerDataService
         if (config.shareEquipment()) data.put("equipment", buildEquipment());
         if (config.shareInventory()) data.put("inventory", buildInventory());
         if (config.shareLocation())  data.put("location",  buildLocation());
+        data.put("quests",  buildQuestStates());
+        data.put("diaries", buildDiaryStates());
         return data;
     }
 
@@ -115,7 +121,73 @@ public class PlayerDataService
         return result;
     }
 
-    private static final int[] XP_TABLE = {
+    public Map<String, Object> buildQuestStates()
+    {
+        if (!isLoggedIn()) return errorMap("Player is not logged in");
+        Map<String, Object> result = new LinkedHashMap<>();
+
+        List<Map<String, Object>> finished    = new ArrayList<>();
+        List<Map<String, Object>> inProgress  = new ArrayList<>();
+        List<Map<String, Object>> notStarted  = new ArrayList<>();
+        for (Quest quest : Quest.values())
+        {
+            QuestState state = quest.getState(client);
+            Map<String, Object> entry = new LinkedHashMap<>();
+            entry.put("name", quest.getName());
+            entry.put("state", state.name().toLowerCase());
+            switch (state)
+            {
+                case FINISHED:   finished.add(entry);  break;
+                case IN_PROGRESS: inProgress.add(entry); break;
+                case NOT_STARTED: notStarted.add(entry); break;
+            }
+        }
+
+        result.put("quest_points", client.getVarpValue(VarPlayer.QUEST_POINTS));
+        result.put("completed_count", finished.size());
+        result.put("in_progress_count", inProgress.size());
+        result.put("not_started_count", notStarted.size());
+        result.put("completed", finished);
+        result.put("in_progress", inProgress);
+        result.put("not_started", notStarted);
+        return result;
+    }
+
+    public Map<String, Object> buildDiaryStates()
+    {
+        if (!isLoggedIn()) return errorMap("Player is not logged in");
+
+        // Each entry: region -> { easy, medium, hard, elite } (1 = complete, 0 = not)
+        int[][] diaries = {
+            {Varbits.DIARY_ARDOUGNE_EASY,  Varbits.DIARY_ARDOUGNE_MEDIUM,  Varbits.DIARY_ARDOUGNE_HARD,  Varbits.DIARY_ARDOUGNE_ELITE},
+            {Varbits.DIARY_DESERT_EASY,    Varbits.DIARY_DESERT_MEDIUM,    Varbits.DIARY_DESERT_HARD,    Varbits.DIARY_DESERT_ELITE},
+            {Varbits.DIARY_FALADOR_EASY,   Varbits.DIARY_FALADOR_MEDIUM,   Varbits.DIARY_FALADOR_HARD,   Varbits.DIARY_FALADOR_ELITE},
+            {Varbits.DIARY_FREMENNIK_EASY, Varbits.DIARY_FREMENNIK_MEDIUM, Varbits.DIARY_FREMENNIK_HARD, Varbits.DIARY_FREMENNIK_ELITE},
+            {Varbits.DIARY_KANDARIN_EASY,  Varbits.DIARY_KANDARIN_MEDIUM,  Varbits.DIARY_KANDARIN_HARD,  Varbits.DIARY_KANDARIN_ELITE},
+            {Varbits.DIARY_KARAMJA_EASY,   Varbits.DIARY_KARAMJA_MEDIUM,   Varbits.DIARY_KARAMJA_HARD,   Varbits.DIARY_KARAMJA_ELITE},
+            {Varbits.DIARY_KOUREND_EASY,   Varbits.DIARY_KOUREND_MEDIUM,   Varbits.DIARY_KOUREND_HARD,   Varbits.DIARY_KOUREND_ELITE},
+            {Varbits.DIARY_LUMBRIDGE_EASY, Varbits.DIARY_LUMBRIDGE_MEDIUM, Varbits.DIARY_LUMBRIDGE_HARD, Varbits.DIARY_LUMBRIDGE_ELITE},
+            {Varbits.DIARY_MORYTANIA_EASY, Varbits.DIARY_MORYTANIA_MEDIUM, Varbits.DIARY_MORYTANIA_HARD, Varbits.DIARY_MORYTANIA_ELITE},
+            {Varbits.DIARY_VARROCK_EASY,   Varbits.DIARY_VARROCK_MEDIUM,   Varbits.DIARY_VARROCK_HARD,   Varbits.DIARY_VARROCK_ELITE},
+            {Varbits.DIARY_WESTERN_EASY,   Varbits.DIARY_WESTERN_MEDIUM,   Varbits.DIARY_WESTERN_HARD,   Varbits.DIARY_WESTERN_ELITE},
+            {Varbits.DIARY_WILDERNESS_EASY,Varbits.DIARY_WILDERNESS_MEDIUM,Varbits.DIARY_WILDERNESS_HARD,Varbits.DIARY_WILDERNESS_ELITE},
+        };
+        String[] regions = {"ardougne","desert","falador","fremennik","kandarin","karamja",
+                             "kourend","lumbridge","morytania","varrock","western_provinces","wilderness"};
+        String[] tiers   = {"easy","medium","hard","elite"};
+
+        Map<String, Object> result = new LinkedHashMap<>();
+        for (int i = 0; i < regions.length; i++)
+        {
+            Map<String, Object> region = new LinkedHashMap<>();
+            for (int j = 0; j < tiers.length; j++)
+                region.put(tiers[j], client.getVarbitValue(diaries[i][j]) == 1);
+            result.put(regions[i], region);
+        }
+        return result;
+    }
+
+        private static final int[] XP_TABLE = {
         0,83,174,276,388,512,650,801,969,1154,1358,1584,1833,2107,2411,2746,3115,3523,3973,4470,
         5018,5624,6291,7028,7842,8740,9730,10824,12031,13363,14833,16456,18247,20224,22406,24815,
         27473,30408,33648,37224,41171,45529,50339,55649,61512,67983,75127,83014,91721,101333,

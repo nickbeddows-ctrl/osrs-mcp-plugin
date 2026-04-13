@@ -144,6 +144,8 @@ public class McpServer
             case "get_inventory":    if (!config.shareInventory()) return privacyError("inventory"); Map<String,Object> inv = new LinkedHashMap<>(); inv.put("inventory", playerDataService.buildInventory()); return inv;
             case "get_location":     if (!config.shareLocation())  return privacyError("location");  return playerDataService.buildLocation();
             case "get_all":          return playerDataService.buildSnapshot();
+            case "get_quest_states":  return playerDataService.buildQuestStates();
+            case "get_diary_states":  return playerDataService.buildDiaryStates();
             default: Map<String,Object> err = new LinkedHashMap<>(); err.put("error", "Unknown tool: " + toolName); return err;
         }
     }
@@ -185,6 +187,8 @@ public class McpServer
         tools.add(buildTool("get_inventory",    "Get the contents of the player's inventory including item names and quantities."));
         tools.add(buildTool("get_location",     "Get the player's current in-game location including world coordinates and area name."));
         tools.add(buildTool("get_all",          "Get all available player data in a single call: stats, equipment, inventory and location."));
+        tools.add(buildTool("get_quest_states",  "Get the state of all quests (completed, in progress, not started) and total quest points."));
+        tools.add(buildTool("get_diary_states",  "Get completion status of all Achievement Diaries across all regions and tiers (easy/medium/hard/elite)."));
         result.add("tools", tools);
         return result;
     }

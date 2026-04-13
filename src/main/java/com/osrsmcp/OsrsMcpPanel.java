@@ -439,6 +439,8 @@ public class OsrsMcpPanel extends PluginPanel
             {"get_equipment",    "Equipped gear by slot"},
             {"get_inventory",    "Inventory contents"},
             {"get_location",     "World coords & area"},
+            {"get_quest_states", "All quest progress"},
+            {"get_diary_states", "Achievement diary tiers"},
         };
         for (String[] t : tools) p.add(buildToolRow(t[0], t[1]));
         return p;
