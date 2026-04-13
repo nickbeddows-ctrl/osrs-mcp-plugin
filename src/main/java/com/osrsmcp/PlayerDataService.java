@@ -5,6 +5,9 @@ import net.runelite.api.Quest;
 import net.runelite.api.QuestState;
 import net.runelite.api.Varbits;
 import net.runelite.api.VarPlayer;
+import net.runelite.client.plugins.Plugin;
+import net.runelite.client.plugins.PluginDescriptor;
+import net.runelite.client.plugins.PluginManager;
 import net.runelite.api.GrandExchangeOffer;
 import net.runelite.client.plugins.Plugin;
 import net.runelite.client.plugins.PluginDescriptor;
@@ -29,7 +32,7 @@ public class PlayerDataService
     @Inject private Client client;
     @Inject private ItemManager itemManager;
     @Inject private OsrsMcpConfig config;
-    @Inject private net.runelite.client.plugins.PluginManager pluginManager;
+    @Inject private PluginManager pluginManager;
 
     public boolean isLoggedIn()
     {
@@ -46,6 +49,7 @@ public class PlayerDataService
         if (config.shareLocation())  data.put("location",  buildLocation());
         data.put("quests",  buildQuestStates());
         data.put("diaries", buildDiaryStates());
+        data.put("plugins", buildInstalledPlugins());
         data.put("slayer",  buildSlayerTask());
         data.put("clue",    buildClueScroll());
         data.put("ge",      buildGeOffers());

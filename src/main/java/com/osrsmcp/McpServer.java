@@ -148,8 +148,8 @@ public class McpServer
             case "get_diary_states":  return playerDataService.buildDiaryStates();
             case "get_slayer_task":   return playerDataService.buildSlayerTask();
             case "get_clue_scroll":   return playerDataService.buildClueScroll();
+            case "get_installed_plugins": return playerDataService.buildInstalledPlugins();
             case "get_ge_offers":          { Map<String,Object> ge = new LinkedHashMap<>(); ge.put("offers", playerDataService.buildGeOffers()); return ge; }
-            case "get_installed_plugins":  return playerDataService.buildInstalledPlugins();
             default: Map<String,Object> err = new LinkedHashMap<>(); err.put("error", "Unknown tool: " + toolName); return err;
         }
     }
@@ -195,8 +195,8 @@ public class McpServer
         tools.add(buildTool("get_diary_states",  "Get completion status of all Achievement Diaries across all regions and tiers (easy/medium/hard/elite)."));
         tools.add(buildTool("get_slayer_task",   "Get current Slayer task: creature name, remaining count, location, points and streak."));
         tools.add(buildTool("get_clue_scroll",   "Check if the player has an active clue scroll in their inventory and which tier it is."));
+        tools.add(buildTool("get_installed_plugins", "Get all installed RuneLite plugins (both built-in and Plugin Hub) with their enabled state. Use this to suggest relevant Plugin Hub plugins."));
         tools.add(buildTool("get_ge_offers",          "Get all active Grand Exchange offers including item, quantity, price and state."));
-        tools.add(buildTool("get_installed_plugins",  "Get all installed RuneLite plugins and whether they are enabled. Useful for suggesting Plugin Hub plugins the player might benefit from."));
         result.add("tools", tools);
         return result;
     }
