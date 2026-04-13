@@ -4,6 +4,8 @@ import net.runelite.api.*;
 import net.runelite.api.Quest;
 import net.runelite.api.QuestState;
 import net.runelite.api.Prayer;
+import net.runelite.api.NPC;
+import net.runelite.api.WorldType;
 import net.runelite.api.Varbits;
 import net.runelite.api.VarPlayer;
 import net.runelite.client.plugins.Plugin;
@@ -55,6 +57,8 @@ public class PlayerDataService
         if (config.shareLocation())  data.put("location",  buildLocation());
         data.put("quests",  buildQuestStates());
         data.put("diaries", buildDiaryStates());
+        data.put("nearby_npcs",   buildNearbyNpcs());
+        data.put("world",          buildWorldInfo());
         data.put("prayers",       buildPrayers());
         data.put("bank",          buildBankValue());
         data.put("collection_log", buildCollectionLog());
@@ -62,6 +66,8 @@ public class PlayerDataService
         data.put("slayer",  buildSlayerTask());
         data.put("clue",    buildClueScroll());
         data.put("ge",      buildGeOffers());
+        data.put("nearby_npcs",   buildNearbyNpcs());
+        data.put("world",          buildWorldInfo());
         data.put("prayers",       buildPrayers());
         data.put("bank",          buildBankValue());
         data.put("collection_log", buildCollectionLog());
@@ -495,6 +501,81 @@ public class PlayerDataService
             }
         }
         return sb.toString().trim();
+    }
+
+        public Map<String, Object> buildNearbyNpcs()
+    {
+        if (!isLoggedIn()) return errorMap("Player is not logged in");
+
+        List<NPC> npcs = client.getNpcs();
+        List<Map<String, Object>> result = new ArrayList<>();
+
+        for (NPC npc : npcs)
+        {
+            if (npc == null || npc.getName() == null) continue;
+            // Skip dead NPCs and untargettable NPCs (id -1)
+            if (npc.isDead() || npc.getId() < 0) continue;
+
+            Map<String, Object> entry = new LinkedHashMap<>();
+            entry.put("name", npc.getName());
+            entry.put("combat_level", npc.getCombatLevel());
+            entry.put("id", npc.getId());
+
+            // Health ratio (approximate %, -1 if unknown)
+            int healthRatio = npc.getHealthRatio();
+            int healthScale = npc.getHealthScale();
+            if (healthRatio >= 0 && healthScale > 0)
+                entry.put("health_percent", Math.round(healthRatio * 100.0 / healthScale));
+
+            // Location
+            if (npc.getWorldLocation() != null)
+            {
+                entry.put("x", npc.getWorldLocation().getX());
+                entry.put("y", npc.getWorldLocation().getY());
+            }
+
+            result.add(entry);
+        }
+
+        // Sort by combat level descending, then name
+        result.sort((a, b) -> {
+            int cl = Integer.compare((int) b.get("combat_level"), (int) a.get("combat_level"));
+            return cl != 0 ? cl : ((String) a.get("name")).compareToIgnoreCase((String) b.get("name"));
+        });
+
+        Map<String, Object> out = new LinkedHashMap<>();
+        out.put("count", result.size());
+        out.put("npcs", result);
+        return out;
+    }
+
+    public Map<String, Object> buildWorldInfo()
+    {
+        if (!isLoggedIn()) return errorMap("Player is not logged in");
+
+        Map<String, Object> result = new LinkedHashMap<>();
+        result.put("world", client.getWorld());
+
+        java.util.EnumSet<WorldType> types = client.getWorldType();
+        result.put("members",    types.contains(WorldType.MEMBERS));
+        result.put("pvp",        WorldType.isPvpWorld(types));
+        result.put("high_risk",  types.contains(WorldType.HIGH_RISK));
+        result.put("deadman",    types.contains(WorldType.DEADMAN));
+        result.put("seasonal",   types.contains(WorldType.SEASONAL));
+        result.put("skill_total",types.contains(WorldType.SKILL_TOTAL));
+        result.put("bounty",     types.contains(WorldType.BOUNTY));
+
+        // Friendly world type label
+        String label = "Standard";
+        if (types.contains(WorldType.DEADMAN))         label = "Deadman";
+        else if (types.contains(WorldType.SEASONAL))   label = "Seasonal";
+        else if (WorldType.isPvpWorld(types))          label = "PvP";
+        else if (types.contains(WorldType.HIGH_RISK))  label = "High Risk";
+        else if (types.contains(WorldType.BOUNTY))     label = "Bounty";
+        else if (types.contains(WorldType.SKILL_TOTAL)) label = "Skill Total";
+        result.put("type_label", label);
+
+        return result;
     }
 
         private static final int[] XP_TABLE = {
