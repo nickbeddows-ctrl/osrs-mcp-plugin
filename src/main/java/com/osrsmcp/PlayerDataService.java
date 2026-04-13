@@ -5,6 +5,10 @@ import net.runelite.api.Quest;
 import net.runelite.api.QuestState;
 import net.runelite.api.Prayer;
 import net.runelite.api.NPC;
+import net.runelite.api.Actor;
+import net.runelite.api.VarPlayer;
+import net.runelite.api.gameval.VarPlayerID;
+import net.runelite.client.config.ConfigManager;
 import net.runelite.api.WorldType;
 import net.runelite.api.Varbits;
 import net.runelite.api.VarPlayer;
@@ -38,6 +42,7 @@ public class PlayerDataService
     @Inject private ItemManager itemManager;
     @Inject private OsrsMcpConfig config;
     @Inject private PluginManager pluginManager;
+    @Inject private ConfigManager configManager;
     @Inject private WikiPriceService wikiPriceService;
 
     // Bank cache -- populated when player opens their bank
@@ -609,6 +614,133 @@ public class PlayerDataService
 
         result.put("items",              items);
         result.put("prices_age_seconds", wikiPriceService.getAge5mMs() / 1000);
+        return result;
+    }
+
+        // ── COMBAT CONTEXT (Phase 11) ─────────────────────────────────────────────
+
+    public Map<String, Object> buildCombatContext()
+    {
+        if (!isLoggedIn()) return errorMap("Player is not logged in");
+        Map<String, Object> result = new LinkedHashMap<>();
+
+        // Base combat levels
+        result.put("attack_level",    client.getRealSkillLevel(net.runelite.api.Skill.ATTACK));
+        result.put("strength_level",  client.getRealSkillLevel(net.runelite.api.Skill.STRENGTH));
+        result.put("defence_level",   client.getRealSkillLevel(net.runelite.api.Skill.DEFENCE));
+        result.put("ranged_level",    client.getRealSkillLevel(net.runelite.api.Skill.RANGED));
+        result.put("magic_level",     client.getRealSkillLevel(net.runelite.api.Skill.MAGIC));
+        result.put("prayer_level",    client.getRealSkillLevel(net.runelite.api.Skill.PRAYER));
+        result.put("hitpoints",       client.getRealSkillLevel(net.runelite.api.Skill.HITPOINTS));
+        result.put("current_hp",      client.getBoostedSkillLevel(net.runelite.api.Skill.HITPOINTS));
+        result.put("current_prayer",  client.getBoostedSkillLevel(net.runelite.api.Skill.PRAYER));
+
+        // Attack style (index into weapon's style list)
+        int attackStyleIdx = client.getVarpValue(VarPlayer.ATTACK_STYLE);
+        result.put("attack_style_index", attackStyleIdx);
+
+        // Special attack
+        int specEnergy = client.getVarpValue(VarPlayer.SPECIAL_ATTACK_PERCENT);
+        result.put("special_attack_percent", specEnergy / 10); // stored as tenths
+        result.put("spec_enabled", client.getVarpValue(VarPlayer.SPECIAL_ATTACK_ENABLED) == 1);
+
+        // Active combat prayers
+        List<String> activePrayers = new ArrayList<>();
+        for (Prayer prayer : Prayer.values())
+            if (client.getVarbitValue(prayer.getVarbit()) == 1)
+                activePrayers.add(formatPrayerName(prayer.name()));
+        result.put("active_prayers", activePrayers);
+
+        // Detect potions in inventory that affect combat
+        Map<String, Boolean> boosts = detectCombatBoosts();
+        result.put("potions_detected", boosts);
+
+        // Current target (what the player is attacking)
+        Actor target = client.getLocalPlayer().getInteracting();
+        if (target instanceof NPC)
+        {
+            NPC npc = (NPC) target;
+            Map<String, Object> t = new LinkedHashMap<>();
+            t.put("name",           npc.getName());
+            t.put("combat_level",   npc.getCombatLevel());
+            t.put("id",             npc.getId());
+            int hr = npc.getHealthRatio(), hs = npc.getHealthScale();
+            if (hr >= 0 && hs > 0) t.put("health_percent", Math.round(hr * 100.0 / hs));
+            result.put("current_target", t);
+        }
+
+        return result;
+    }
+
+    private Map<String, Boolean> detectCombatBoosts()
+    {
+        ItemContainer inv = client.getItemContainer(InventoryID.INVENTORY);
+        Map<String, Boolean> boosts = new LinkedHashMap<>();
+        boosts.put("super_attack",    false);
+        boosts.put("super_strength",  false);
+        boosts.put("super_combat",    false);
+        boosts.put("ranging_potion",  false);
+        boosts.put("bastion_potion",  false);
+        boosts.put("imbued_heart",    false);
+        boosts.put("overload",        false);
+        boosts.put("prayer_potion",   false);
+        boosts.put("sanfew_serum",    false);
+
+        if (inv == null) return boosts;
+        for (Item item : inv.getItems())
+        {
+            if (item.getId() <= 0) continue;
+            String name = itemManager.getItemComposition(item.getId()).getName().toLowerCase();
+            if (name.contains("super attack"))        boosts.put("super_attack",   true);
+            if (name.contains("super strength"))      boosts.put("super_strength", true);
+            if (name.contains("super combat"))        boosts.put("super_combat",   true);
+            if (name.contains("ranging potion") || name.contains("ranging pot")) boosts.put("ranging_potion", true);
+            if (name.contains("bastion"))             boosts.put("bastion_potion", true);
+            if (name.contains("imbued heart"))        boosts.put("imbued_heart",   true);
+            if (name.contains("overload"))            boosts.put("overload",       true);
+            if (name.contains("prayer potion"))       boosts.put("prayer_potion",  true);
+            if (name.contains("sanfew"))              boosts.put("sanfew_serum",   true);
+        }
+        return boosts;
+    }
+
+    public Map<String, Object> buildBossKc()
+    {
+        Map<String, Object> result = new LinkedHashMap<>();
+
+        // Game-tracked slayer boss KCs (VarPlayerID)
+        result.put("zulrah",               client.getVarpValue(VarPlayerID.TOTAL_SNAKEBOSS_KILLS));
+        result.put("kraken",               client.getVarpValue(VarPlayerID.TOTAL_KRAKEN_BOSS_KILLS));
+        result.put("vorkath",              client.getVarpValue(VarPlayerID.TOTAL_VORKATH_KILLS));
+        result.put("grotesque_guardians",  client.getVarpValue(VarPlayerID.TOTAL_GARGBOSS_KILLS));
+        result.put("alchemical_hydra",     client.getVarpValue(VarPlayerID.TOTAL_HYDRABOSS_KILLS));
+        result.put("barrows",              client.getVarpValue(VarPlayerID.TOTAL_BARROWS_CHESTS));
+        result.put("catacomb_bosses",      client.getVarpValue(VarPlayerID.TOTAL_CATA_BOSS_KILLS));
+
+        // Profile-stored KCs (set by ChatCommands plugin from chat messages)
+        // Common bosses stored by name
+        String[] profileBosses = {
+            "abyssal sire", "cerberus", "chaos elemental", "commander zilyana",
+            "corporeal beast", "dagannoth prime", "dagannoth rex", "dagannoth supreme",
+            "general graardor", "giant mole", "kree'arra", "k'ril tsutsaroth",
+            "nex", "nightmare", "phosani's nightmare", "sarachnis",
+            "scorpia", "scurrius", "skotizo", "tempoross",
+            "theatre of blood", "chambers of xeric", "tombs of amascut",
+            "thermonuclear smoke devil", "tzkal-zuk", "tztok-jad",
+            "vardorvis", "duke sucellus", "the leviathan", "the whisperer",
+            "callisto", "venenatis", "vet'ion", "king black dragon",
+            "deranged archaeologist", "obor", "bryophyta"
+        };
+
+        Map<String, Object> profileKc = new LinkedHashMap<>();
+        for (String boss : profileBosses)
+        {
+            Integer kc = configManager.getRSProfileConfiguration("killcount", boss, int.class);
+            if (kc != null && kc > 0) profileKc.put(boss, kc);
+        }
+        result.put("profile_kc", profileKc);
+        result.put("note", "Profile KCs require ChatCommands plugin to be active and bosses killed while it was enabled.");
+
         return result;
     }
 

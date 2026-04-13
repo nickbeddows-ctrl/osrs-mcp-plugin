@@ -157,6 +157,8 @@ public class McpServer
             case "get_bank_summary":       return playerDataService.buildBankSummary();
             case "get_bank_top_value":     return playerDataService.buildBankTopValue();
             case "get_bank_coins":          return playerDataService.buildBankCoins();
+            case "get_combat_context":     return playerDataService.buildCombatContext();
+            case "get_boss_kc":             return playerDataService.buildBossKc();
             case "get_price_trends":        {
                 java.util.List<Integer> ids = new java.util.ArrayList<>();
                 if (args != null && args.has("item_ids"))
@@ -229,6 +231,8 @@ public class McpServer
         tools.add(buildTool("get_bank_summary",       "Get total bank value, item count and coin balance. Requires bank to have been opened this session."));
         tools.add(buildTool("get_bank_top_value",      "Get the top 100 items in the bank sorted by total GE value. Requires bank open."));
         tools.add(buildTool("get_bank_coins",           "Get coin totals across inventory and bank combined."));
+        tools.add(buildTool("get_combat_context",  "Get combat context: effective levels, attack style, spec energy, active prayers, potion detection, and current target NPC."));
+        tools.add(buildTool("get_boss_kc",          "Get boss kill counts: game-tracked slayer boss KCs and profile-stored KCs from ChatCommands plugin."));
         tools.add(buildTool("get_price_trends",  "Get price trend data for specific items: current price, 5m and 1h averages, trade volume, and rising/falling/stable direction. Pass item_ids array."));
         tools.add(buildTool("get_item_prices",          "Get live Wiki GE prices for specific item IDs. Pass item_ids as an array of integers."));
         tools.add(buildTool("get_flip_suggestions",     "Get flip suggestions from bank items cross-referenced with live GE margins, filtered by coin budget."));
