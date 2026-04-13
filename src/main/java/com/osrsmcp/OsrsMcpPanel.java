@@ -647,6 +647,11 @@ public class OsrsMcpPanel extends PluginPanel
                 url = "http://" + ip + ":" + currentPort + "/mcp";
                 argsLine = "      \"" + url + "\",\n      \"--allow-http\"]";
                 break;
+            case TAILSCALE:
+                String tsIp = currentLanIp != null ? currentLanIp : "YOUR_TAILSCALE_IP";
+                url = "http://" + tsIp + ":" + currentPort + "/mcp";
+                argsLine = "      \"" + url + "\",\n      \"--allow-http\"]";
+                break;
             case CLOUD_RELAY:
                 url = fullRelayUrl != null ? fullRelayUrl : "https://YOUR_RELAY_URL/mcp";
                 argsLine = "      \"" + url + "\"]";
