@@ -49,6 +49,7 @@ public class PlayerDataService
     @Inject private EquipmentStatsService equipmentStatsService;
     @Inject private DropTableService dropTableService;
     @Inject private FarmingPatchService farmingPatchService;
+    @Inject private CacheWriter cacheWriter;
     @Inject private ConfigManager configManager;
     @Inject private WikiPriceService wikiPriceService;
 
@@ -199,6 +200,18 @@ public class PlayerDataService
         }
 
         result.put("quest_points", client.getVarpValue(VarPlayer.QUEST_POINTS));
+        // Write quest cache
+        try
+        {
+            List<String> doneNames = new ArrayList<>();
+            List<String> ipNames   = new ArrayList<>();
+            List<String> nsNames   = new ArrayList<>();
+            for (Map<String, Object> q : finished)   doneNames.add((String) q.get("name"));
+            for (Map<String, Object> q : inProgress) ipNames.add((String) q.get("name"));
+            for (Map<String, Object> q : notStarted) nsNames.add((String) q.get("name"));
+            cacheWriter.writeQuests(client.getVarpValue(VarPlayer.QUEST_POINTS), doneNames, ipNames, nsNames);
+        }
+        catch (Exception ignored) {}
         result.put("completed_count", finished.size());
         result.put("in_progress_count", inProgress.size());
         result.put("not_started_count", notStarted.size());
@@ -684,7 +697,9 @@ public class PlayerDataService
 
         public Map<String, Object> buildFarmingPatches()
     {
-        return farmingPatchService.buildFarmingPatches();
+        Map<String, Object> result = farmingPatchService.buildFarmingPatches();
+        try { cacheWriter.writeFarming(result); } catch (Exception ignored) {}
+        return result;
     }
 
     public Map<String, Object> buildDropTable(String npcName)

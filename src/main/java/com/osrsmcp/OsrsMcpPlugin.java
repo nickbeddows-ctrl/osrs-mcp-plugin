@@ -5,6 +5,9 @@ import lombok.extern.slf4j.Slf4j;
 import net.runelite.api.Client;
 import net.runelite.api.events.GameStateChanged;
 import net.runelite.api.events.ItemContainerChanged;
+import net.runelite.api.events.StatChanged;
+import net.runelite.api.InventoryID;
+import net.runelite.api.coords.WorldPoint;
 import net.runelite.client.config.ConfigManager;
 import net.runelite.client.eventbus.Subscribe;
 import net.runelite.client.events.ConfigChanged;
@@ -40,6 +43,8 @@ public class OsrsMcpPlugin extends Plugin
     @Inject private TailscaleService tailscaleService;
     @Inject private ConfigManager configManager;
     @Inject private PlayerDataService playerDataService;
+    @Inject private CacheWriter cacheWriter;
+    @Inject private EquipmentStatsService equipmentStatsService;
 
     private NavigationButton navButton;
 
@@ -48,6 +53,7 @@ public class OsrsMcpPlugin extends Plugin
     {
         panel.setRestartCallback(this::restartServer);
         playerDataService.loadPersistedItems();
+        cacheWriter.init();
         panel.setRelayKeyService(relayKeyService);
         panel.setTailscaleService(tailscaleService);
         panel.setConfigManager(configManager);
@@ -126,9 +132,58 @@ public class OsrsMcpPlugin extends Plugin
     }
 
     @Subscribe
-    public void onItemContainerChanged(ItemContainerChanged event)
+    public void onStatChanged(StatChanged event)
+    {
+        // Debounce -- write character cache once after a burst of stat changes
+        javax.swing.SwingUtilities.invokeLater(() -> writeCharacterCache());
+    }
+
+    private void writeCharacterCache()
+    {
+        if (client.getGameState() != net.runelite.api.GameState.LOGGED_IN) return;
+        net.runelite.api.Player player = client.getLocalPlayer();
+        if (player == null) return;
+        java.util.Map<String, Integer> skills = new java.util.LinkedHashMap<>();
+        for (net.runelite.api.Skill skill : net.runelite.api.Skill.values())
+            if (skill != net.runelite.api.Skill.OVERALL)
+                skills.put(skill.getName(), client.getRealSkillLevel(skill));
+        net.runelite.api.coords.WorldPoint wp = player.getWorldLocation();
+        String loc = wp != null ? wp.getX() + ", " + wp.getY() : null;
+        String username = config.shareUsername() ? player.getName() : "hidden";
+        cacheWriter.writeCharacter(username, player.getCombatLevel(), skills, loc);
+    }
+
+    @Subscribe
+    public void onItemContainerChanged2(ItemContainerChanged event)
     {
         playerDataService.onBankChanged(event);
+        int id = event.getContainerId();
+        if (id == InventoryID.BANK.getId())
+        {
+            net.runelite.api.Item[] items = event.getItemContainer().getItems();
+            cacheWriter.writeBank(items);
+        }
+        else if (id == InventoryID.SEED_VAULT.getId())
+        {
+            cacheWriter.writeSeedVault(event.getItemContainer().getItems());
+        }
+        else if (id == InventoryID.EQUIPMENT.getId())
+        {
+            // Write equipment cache
+            java.util.Map<String, String> slotToItem = new java.util.LinkedHashMap<>();
+            String[] slotNames = {"head","cape","amulet","weapon","body","shield",
+                                  "legs","hands","feet","ring","ammo"};
+            net.runelite.api.Item[] items = event.getItemContainer().getItems();
+            for (int i = 0; i < items.length && i < slotNames.length; i++)
+            {
+                if (items[i] == null || items[i].getId() <= 0) continue;
+                String name = client.getItemDefinition(items[i].getId()).getName();
+                if (name != null && !name.equals("null"))
+                    slotToItem.put(slotNames[i], name);
+            }
+            if (!slotToItem.isEmpty())
+                cacheWriter.writeEquipment(slotToItem, equipmentStatsService);
+        }
     }
 
     @Subscribe
