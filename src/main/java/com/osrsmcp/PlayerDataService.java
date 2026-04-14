@@ -1074,6 +1074,66 @@ public class PlayerDataService
         return result;
     }
 
+        public Map<String, Object> buildCacheIndex()
+    {
+        Map<String, Object> result = new LinkedHashMap<>();
+        java.io.File dir = new java.io.File(cacheWriter.getCacheDir());
+        List<Map<String, Object>> files = new ArrayList<>();
+        if (dir.exists() && dir.isDirectory())
+        {
+            java.io.File[] mdFiles = dir.listFiles((d, n) -> n.endsWith(".md"));
+            if (mdFiles != null)
+            {
+                java.util.Arrays.sort(mdFiles, Comparator.comparing(java.io.File::getName));
+                java.time.format.DateTimeFormatter fmt =
+                    java.time.format.DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
+                for (java.io.File f : mdFiles)
+                {
+                    Map<String, Object> entry = new LinkedHashMap<>();
+                    entry.put("file",         f.getName());
+                    entry.put("size_bytes",   f.length());
+                    entry.put("last_updated", java.time.LocalDateTime
+                        .ofInstant(java.time.Instant.ofEpochMilli(f.lastModified()),
+                                   java.time.ZoneId.systemDefault()).format(fmt));
+                    files.add(entry);
+                }
+            }
+        }
+        result.put("cache_dir", cacheWriter.getCacheDir());
+        result.put("files",     files);
+        result.put("hint",      "Call read_cache with a file name to get the full contents.");
+        return result;
+    }
+
+    public Map<String, Object> readCacheFile(String filename)
+    {
+        Map<String, Object> result = new LinkedHashMap<>();
+        if (filename == null || filename.trim().isEmpty())
+            return errorMap("No filename provided. Call get_cache_index to see available files.");
+
+        // Sanitise -- only allow .md files, no path traversal
+        String clean = new java.io.File(filename).getName();
+        if (!clean.endsWith(".md"))
+            return errorMap("Only .md files are available. Example: bank.md");
+
+        java.io.File file = new java.io.File(cacheWriter.getCacheDir(), clean);
+        if (!file.exists())
+            return errorMap("Cache file not found: " + clean + ". Call get_cache_index to see available files.");
+
+        try
+        {
+            String contents = new String(java.nio.file.Files.readAllBytes(file.toPath()),
+                                         java.nio.charset.StandardCharsets.UTF_8);
+            result.put("file",     clean);
+            result.put("contents", contents);
+            return result;
+        }
+        catch (java.io.IOException e)
+        {
+            return errorMap("Failed to read cache file: " + e.getMessage());
+        }
+    }
+
         // ── BIS COMPARISON (Phase 16) ─────────────────────────────────────────────
 
     /**

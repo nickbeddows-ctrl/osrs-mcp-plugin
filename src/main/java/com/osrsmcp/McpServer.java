@@ -157,6 +157,11 @@ public class McpServer
             case "get_bank_summary":       return playerDataService.buildBankSummary();
             case "get_bank_top_value":     return playerDataService.buildBankTopValue();
             case "get_bank_coins":          return playerDataService.buildBankCoins();
+            case "get_cache_index":         return playerDataService.buildCacheIndex();
+            case "read_cache":              {
+                String filename = args != null && args.has("file") ? args.get("file").getAsString() : "";
+                return playerDataService.readCacheFile(filename);
+            }
             case "get_bis_comparison":      {
                 String style = args != null && args.has("style") ? args.get("style").getAsString() : "melee";
                 return playerDataService.buildBisComparison(style);
@@ -246,6 +251,8 @@ public class McpServer
         tools.add(buildTool("get_bank_summary",       "Get total bank value, item count and coin balance. Requires bank to have been opened this session."));
         tools.add(buildTool("get_bank_top_value",      "Get the top 100 items in the bank sorted by total GE value. Requires bank open."));
         tools.add(buildTool("get_bank_coins",           "Get coin totals across inventory and bank combined."));
+        tools.add(buildTool("get_cache_index",       "List all available cache files with their last-updated timestamps. Use this to see what persistent data the plugin has stored (bank, equipment, quests, farming, seeds, character)."));
+        tools.add(buildTool("read_cache",           "Read the full contents of a specific cache file by name (e.g. bank.md, equipment.md, quests.md, farming.md, seed_vault.md, character.md). Returns human-readable markdown."));
         tools.add(buildTool("get_bis_comparison",   "Compare current equipped gear against banked items slot-by-slot for a given combat style. Pass style as melee, ranged, or magic. Returns upgrades available in your bank with stat scores."));
         tools.add(buildTool("get_seed_vault",        "Get the contents of the player's seed vault: seeds, saplings, and other items with quantities and GE prices. Requires opening the seed vault first."));
         tools.add(buildTool("get_farming_patches",  "Get the state of all 9 herb patches: ready to harvest, growing (with time remaining), empty, or diseased/dead. Includes live GE price for harvestable herbs. Data persists between visits via Time Tracking plugin config."));
