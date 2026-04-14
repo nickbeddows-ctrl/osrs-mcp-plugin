@@ -33,6 +33,8 @@ public class EquipmentStatsService
         public int astab, aslash, acrush, amagic, arange;
         public int dstab, dslash, dcrush, dmagic, drange;
         public int str, prayer, speed;
+        public int rstr;   // ranged strength bonus
+        public int mdmg;   // magic damage % bonus
         public long fetchedAt;
 
         public Map<String, Object> toMap()
@@ -42,7 +44,7 @@ public class EquipmentStatsService
             m.put("slot",   slot);
             m.put("attack_bonuses",  bonusMap("stab", astab, "slash", aslash, "crush", acrush, "magic", amagic, "ranged", arange));
             m.put("defence_bonuses", bonusMap("stab", dstab, "slash", dslash, "crush", dcrush, "magic", dmagic, "ranged", drange));
-            m.put("other_bonuses",   bonusMap("strength", str, "prayer", prayer));
+            m.put("other_bonuses",   bonusMap("strength", str, "ranged_strength", rstr, "magic_damage_pct", mdmg, "prayer", prayer));
             if (speed > 0) m.put("attack_speed", speed);
             return m;
         }
@@ -99,6 +101,8 @@ public class EquipmentStatsService
             stats.str       = intField(wikiText, "str");
             stats.prayer    = intField(wikiText, "prayer");
             stats.speed     = intField(wikiText, "speed");
+            stats.rstr      = intField(wikiText, "rstr");
+            stats.mdmg      = intField(wikiText, "mdmg");
 
             if (stats.slot != null)
             {

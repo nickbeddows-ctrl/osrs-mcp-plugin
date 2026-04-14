@@ -1293,8 +1293,8 @@ public class PlayerDataService
         switch (style)
         {
             case "melee":  return stats.str + stats.aslash + stats.acrush + stats.astab;
-            case "ranged": return stats.arange + (stats.str / 2.0); // ranged str stored in str slot
-            case "magic":  return stats.amagic;
+            case "ranged": return stats.arange + (stats.rstr * 3.0); // rstr weighted higher as it affects max hit
+            case "magic":  return stats.amagic + (stats.mdmg * 5.0); // mdmg weighted higher as each % is very impactful
             default:       return stats.str + stats.aslash;
         }
     }
@@ -1586,15 +1586,20 @@ public class PlayerDataService
             s.put("id",             item.getId());
             s.put("buy_at",         pd.high);
             s.put("sell_at",        pd.low);
-            s.put("margin",         margin);
-            s.put("margin_pct",     Math.round(pd.marginPct() * 10) / 10.0);
-            s.put("volume_5m",      totalVol5m);
-            s.put("volume_hourly_est", totalVol5m * 12); // extrapolate 5m → 1h
-            s.put("can_afford",     canAfford);
+            // GE tax: 2% on sell side, capped at 5M per item
+            long taxAmount = Math.min((long)(pd.high * 0.02), 5_000_000L);
+            int postTaxMargin = margin - (int) taxAmount;
+            double postTaxMarginPct = pd.low > 0 ? (postTaxMargin * 100.0 / pd.low) : 0;
+            s.put("margin_pre_tax",      margin);
+            s.put("margin_post_tax",     postTaxMargin);
+            s.put("margin_pct_post_tax", Math.round(postTaxMarginPct * 10) / 10.0);
+            s.put("volume_5m",           totalVol5m);
+            s.put("volume_hourly_est",   totalVol5m * 12);
+            s.put("can_afford",          canAfford);
             if (meta != null)
             {
                 s.put("ge_limit",       meta.limit);
-                s.put("max_profit",     (long) margin * meta.limit);
+                s.put("max_profit_post_tax", (long) postTaxMargin * meta.limit);
                 s.put("cost_full_flip", (long) pd.high * meta.limit);
                 s.put("highalch",       meta.highalch);
             }
@@ -1606,8 +1611,8 @@ public class PlayerDataService
             boolean aAfford = (boolean) a.get("can_afford");
             boolean bAfford = (boolean) b.get("can_afford");
             if (aAfford != bAfford) return bAfford ? 1 : -1;
-            double aScore = (double) a.get("margin_pct") * Math.log1p((int) a.get("volume_5m"));
-            double bScore = (double) b.get("margin_pct") * Math.log1p((int) b.get("volume_5m"));
+            double aScore = (double) a.get("margin_pct_post_tax") * Math.log1p((int) a.get("volume_5m"));
+            double bScore = (double) b.get("margin_pct_post_tax") * Math.log1p((int) b.get("volume_5m"));
             return Double.compare(bScore, aScore);
         });
 
