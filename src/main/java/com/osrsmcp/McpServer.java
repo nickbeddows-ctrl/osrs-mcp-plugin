@@ -157,6 +157,7 @@ public class McpServer
             case "get_bank_summary":       return playerDataService.buildBankSummary();
             case "get_bank_top_value":     return playerDataService.buildBankTopValue();
             case "get_bank_coins":          return playerDataService.buildBankCoins();
+            case "get_farming_patches":    return playerDataService.buildFarmingPatches();
             case "get_drop_table":          {
                 String npcName = args != null && args.has("name") ? args.get("name").getAsString() : "";
                 return playerDataService.buildDropTable(npcName);
@@ -240,6 +241,7 @@ public class McpServer
         tools.add(buildTool("get_bank_summary",       "Get total bank value, item count and coin balance. Requires bank to have been opened this session."));
         tools.add(buildTool("get_bank_top_value",      "Get the top 100 items in the bank sorted by total GE value. Requires bank open."));
         tools.add(buildTool("get_bank_coins",           "Get coin totals across inventory and bank combined."));
+        tools.add(buildTool("get_farming_patches",  "Get the state of all 9 herb patches: ready to harvest, growing (with time remaining), empty, or diseased/dead. Includes live GE price for harvestable herbs. Data persists between visits via Time Tracking plugin config."));
         tools.add(buildTool("get_drop_table",        "Get the drop table for any OSRS monster from the Wiki. Returns always drops, unique drops (rare), and regular drops -- each with GE price and expected GP per kill. Pass name as the monster name."));
         tools.add(buildTool("get_equipment_stats",  "Get full equipment stat bonuses for currently equipped gear: attack/defence/strength/prayer bonuses per slot, totals, and estimated max hit. Stats fetched live from OSRS Wiki."));
         tools.add(buildTool("get_npc_info",          "Fetch monster stats from the OSRS Wiki by name: combat level, hitpoints, defence bonuses, max hit, attack speed, weaknesses, immune to poison/venom. Pass name as the monster name."));

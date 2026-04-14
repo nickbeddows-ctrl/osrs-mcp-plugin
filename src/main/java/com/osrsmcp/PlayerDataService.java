@@ -48,6 +48,7 @@ public class PlayerDataService
     @Inject private okhttp3.OkHttpClient httpClient;
     @Inject private EquipmentStatsService equipmentStatsService;
     @Inject private DropTableService dropTableService;
+    @Inject private FarmingPatchService farmingPatchService;
     @Inject private ConfigManager configManager;
     @Inject private WikiPriceService wikiPriceService;
 
@@ -623,7 +624,12 @@ public class PlayerDataService
         return result;
     }
 
-        public Map<String, Object> buildDropTable(String npcName)
+        public Map<String, Object> buildFarmingPatches()
+    {
+        return farmingPatchService.buildFarmingPatches();
+    }
+
+    public Map<String, Object> buildDropTable(String npcName)
     {
         return dropTableService.getDropTable(npcName);
     }
